@@ -10,7 +10,7 @@ app = Flask(__name__)
 # --- КЛЮЧИ ---
 VT_API_KEY = '5f6d8f149fe5c6b3f6f701bb712f2955fb75db2a7dfd83e85812841c372b9359'
 HF_TOKEN = 'Hf_jIDGDeAzDSfELiLNidAbpjTFdKcfRbRgBJ'
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY')  # Read from Replit Secrets
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')  # Read from Replit Secrets
 STATS_FILE = 'stats.txt'
 
 def get_real_stats():
@@ -546,6 +546,140 @@ HTML_LAYOUT = '''
         @media (max-width: 520px) {
             .ping-indicator { position: static; transform: none; margin: 12px auto 0; display: inline-flex; }
         }
+
+        /* --- ГЛАВНАЯ СТРАНИЦА --- */
+        .home-feature {
+            padding: 12px 10px;
+            border: 1px solid rgba(244, 114, 182, 0.2);
+            border-radius: 14px;
+            background: rgba(30, 27, 75, 0.35);
+            text-align: center;
+            transition: all 0.4s var(--smooth);
+        }
+        .home-feature:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-berry);
+            box-shadow: 0 6px 18px rgba(244, 114, 182, 0.25);
+        }
+        .home-step {
+            font-size: 12.5px;
+            padding: 9px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--accent-berry);
+            background: rgba(244, 114, 182, 0.06);
+            border-radius: 0 10px 10px 0;
+            transition: all 0.4s var(--smooth);
+        }
+        .home-step:hover {
+            background: rgba(244, 114, 182, 0.14);
+            transform: translateX(4px);
+        }
+
+        .news-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(165, 243, 252, 0.18);
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.55), rgba(15, 23, 42, 0.4));
+            position: relative;
+            overflow: hidden;
+            transition: all 0.45s var(--ultra-smooth);
+            cursor: pointer;
+        }
+        .news-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(244, 114, 182, 0.12), transparent);
+            transition: left 0.7s var(--smooth);
+        }
+        .news-card:hover {
+            transform: translateY(-4px) scale(1.015);
+            border-color: var(--accent-berry);
+            box-shadow: 0 10px 28px rgba(244, 114, 182, 0.28);
+        }
+        .news-card:hover::before { left: 100%; }
+        .news-card:active { transform: translateY(-1px) scale(0.99); }
+        .news-tag {
+            display: inline-block;
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            padding: 3px 9px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .news-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 5px;
+            line-height: 1.35;
+        }
+        .news-desc {
+            font-size: 11.5px;
+            opacity: 0.78;
+            line-height: 1.45;
+            margin-bottom: 10px;
+        }
+        .news-arrow {
+            font-size: 11px;
+            color: var(--accent-berry);
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            transition: letter-spacing 0.4s var(--smooth);
+        }
+        .news-card:hover .news-arrow { letter-spacing: 1.4px; }
+
+        /* --- КНОПКА ГЕНЕРАЦИИ ПАРОЛЯ (ВТОРАЯ ЗОНА) --- */
+        .generator-card {
+            margin-top: 18px;
+            padding: 22px 18px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.12), rgba(165, 243, 252, 0.07));
+            border: 1px solid rgba(244, 114, 182, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s var(--smooth);
+        }
+        .generator-card:hover {
+            border-color: var(--accent-berry);
+            box-shadow: 0 8px 24px rgba(244, 114, 182, 0.3);
+        }
+        .generator-card h4 {
+            margin: 0 0 6px;
+            font-size: 15px;
+            letter-spacing: 1px;
+        }
+        .generator-card p {
+            font-size: 11.5px;
+            opacity: 0.75;
+            margin: 0 0 14px;
+        }
+        .btn-generate {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent-frost), var(--accent-berry));
+            color: #1E1B4B;
+            font-weight: 800;
+            font-size: 13px;
+            letter-spacing: 1.3px;
+            cursor: pointer;
+            transition: all 0.35s var(--smooth);
+            box-shadow: 0 4px 14px rgba(244, 114, 182, 0.35);
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(244, 114, 182, 0.55);
+        }
+        .btn-generate:active { transform: translateY(0) scale(0.98); }
     </style>
 </head>
 <body id="body-tag">
@@ -556,7 +690,10 @@ HTML_LAYOUT = '''
     </div>
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
     <div class="side-menu" id="side-menu">
-        <a class="menu-item active" id="menu-tab-scanner" onclick="switchPage('scanner'); toggleMenu()">
+        <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home'); toggleMenu()">
+            <span>🏠</span> ГЛАВНАЯ
+        </a>
+        <a class="menu-item" id="menu-tab-scanner" onclick="switchPage('scanner'); toggleMenu()">
             <span>🛡️</span> ПРОВЕРЯТОР
         </a>
         <a class="menu-item" id="menu-tab-info" onclick="switchPage('info'); toggleMenu()">
@@ -575,8 +712,103 @@ HTML_LAYOUT = '''
     </div>
 
     <div class="container">
-        
-        <div id="page-scanner" class="page-content">
+
+        <div id="page-home" class="page-content">
+            <div class="search-card">
+                <h1 class="logo-main shimmer-text"><span>🏠</span> CyberShield</h1>
+                <p style="color: #cbd5e1; font-size: 14px;">Твой умный помощник в мире цифровой безопасности</p>
+            </div>
+
+            <div class="memo-box active" style="margin-top: 20px;">
+                <div class="memo-header"><span class="shimmer-text">🛰 О НАШЕМ СЕРВИСЕ</span></div>
+                <div class="memo-content" style="padding-bottom:20px;">
+                    <p style="font-size: 13px; line-height: 1.6;">CyberShield — белорусский цифровой щит. Мы помогаем распознавать фишинговые ссылки, мошеннические схемы и угрозы в сети до того, как они причинят вред вам или вашим близким.</p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                        <div class="home-feature">
+                            <span style="font-size: 22px;">🛡️</span>
+                            <b class="shimmer-text" style="font-size:11px; display:block; margin-top:4px;">ПРОВЕРКА ССЫЛОК</b>
+                            <span style="font-size:10.5px; opacity:0.8;">Анализ через VirusTotal и ИИ-вердикт.</span>
+                        </div>
+                        <div class="home-feature">
+                            <span style="font-size: 22px;">🤖</span>
+                            <b class="shimmer-text" style="font-size:11px; display:block; margin-top:4px;">ИИ-ПОМОЩНИК</b>
+                            <span style="font-size:10.5px; opacity:0.8;">Живые ответы по кибербезопасности.</span>
+                        </div>
+                        <div class="home-feature">
+                            <span style="font-size: 22px;">🎭</span>
+                            <b class="shimmer-text" style="font-size:11px; display:block; margin-top:4px;">СИМУЛЯЦИИ</b>
+                            <span style="font-size:10.5px; opacity:0.8;">Тренировка против реальных мошенников.</span>
+                        </div>
+                        <div class="home-feature">
+                            <span style="font-size: 22px;">🔑</span>
+                            <b class="shimmer-text" style="font-size:11px; display:block; margin-top:4px;">ПАРОЛЬНЫЙ СТРАЖ</b>
+                            <span style="font-size:10.5px; opacity:0.8;">Анализ и генерация надёжных паролей.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="memo-box active" style="margin-top: 20px;">
+                <div class="memo-header"><span class="shimmer-text">📋 КАК НАЧАТЬ</span></div>
+                <div class="memo-content" style="padding-bottom:20px;">
+                    <div class="home-step"><b style="color:var(--accent-berry);">1.</b> Откройте меню <span style="opacity:0.7;">(значок ☰ в углу)</span></div>
+                    <div class="home-step"><b style="color:var(--accent-berry);">2.</b> Перейдите в <b>«ПРОВЕРЯТОР»</b> и проверьте подозрительную ссылку</div>
+                    <div class="home-step"><b style="color:var(--accent-berry);">3.</b> Изучите угрозы во вкладке <b>«ИНФОРМАЦИЯ / ТЕСТЫ»</b> и пройдите экзамен</div>
+                    <div class="home-step"><b style="color:var(--accent-berry);">4.</b> Защитите аккаунты в <b>«ПАРОЛЬНОМ СТРАЖЕ»</b></div>
+                </div>
+            </div>
+
+            <div class="memo-box active" style="margin-top: 20px;">
+                <div class="memo-header"><span class="shimmer-text">📡 ЛЕНТА КИБЕРБЕЗОПАСНОСТИ РБ</span></div>
+                <div class="memo-content" style="padding-bottom:20px;">
+                    <p style="font-size: 11px; opacity: 0.7; margin-bottom: 14px;">Официальные источники Республики Беларусь</p>
+
+                    <a href="https://mvd.gov.by/ru/page/upravlenie-k" target="_blank" rel="noopener" class="news-card">
+                        <div class="news-tag" style="background: rgba(244, 114, 182, 0.2); color: var(--accent-berry);">МВД РБ · УПРАВЛЕНИЕ «К»</div>
+                        <div class="news-title">Главное управление по противодействию киберпреступности</div>
+                        <div class="news-desc">Официальная страница подразделения МВД, которое расследует киберпреступления, мошенничество в интернете и атаки на банковские карты.</div>
+                        <span class="news-arrow">→ Перейти на mvd.gov.by</span>
+                    </a>
+
+                    <a href="https://pravo.by" target="_blank" rel="noopener" class="news-card">
+                        <div class="news-tag" style="background: rgba(165, 243, 252, 0.18); color: var(--accent-frost);">PRAVO.BY · ЗАКОНОДАТЕЛЬСТВО</div>
+                        <div class="news-title">Национальный правовой интернет-портал</div>
+                        <div class="news-desc">Актуальные законы о персональных данных, защите информации и ответственности за киберпреступления в Беларуси.</div>
+                        <span class="news-arrow">→ Перейти на pravo.by</span>
+                    </a>
+
+                    <a href="https://oac.gov.by" target="_blank" rel="noopener" class="news-card">
+                        <div class="news-tag" style="background: rgba(34, 197, 94, 0.18); color: var(--safe-green);">ОАЦ · НАЦИОНАЛЬНЫЙ CERT</div>
+                        <div class="news-title">Оперативно-аналитический центр при Президенте РБ</div>
+                        <div class="news-desc">Государственный регулятор сферы информационной безопасности. Сертификация средств защиты, реагирование на инциденты.</div>
+                        <span class="news-arrow">→ Перейти на oac.gov.by</span>
+                    </a>
+
+                    <a href="https://www.belta.by/society/" target="_blank" rel="noopener" class="news-card">
+                        <div class="news-tag" style="background: rgba(251, 191, 36, 0.18); color: #fbbf24;">БелТА · НОВОСТИ</div>
+                        <div class="news-title">Свежие новости о киберугрозах в Беларуси</div>
+                        <div class="news-desc">Государственное информационное агентство публикует сводки о фишинге, скамах и предупреждения от правоохранительных органов.</div>
+                        <span class="news-arrow">→ Перейти на belta.by</span>
+                    </a>
+
+                    <a href="https://kyc.gov.by" target="_blank" rel="noopener" class="news-card">
+                        <div class="news-tag" style="background: rgba(167, 139, 250, 0.2); color: #a78bfa;">КИБЕРПРАВО · КОНКУРС</div>
+                        <div class="news-title">#КИБЕРПРАВО — твой щит в цифровом мире</div>
+                        <div class="news-desc">Республиканский конкурс по правовому просвещению в сфере кибербезопасности при поддержке Министерства юстиции РБ.</div>
+                        <span class="news-arrow">→ Перейти на mir.pravo.by</span>
+                    </a>
+
+                    <a href="https://www.mvd.gov.by/ru/news" target="_blank" rel="noopener" class="news-card">
+                        <div class="news-tag" style="background: rgba(239, 68, 68, 0.18); color: var(--danger-red);">МВД · СВОДКИ</div>
+                        <div class="news-title">Сводки о мошенничестве и хищениях</div>
+                        <div class="news-desc">Ежедневные публикации МВД о новых схемах: фейковые «звонки из банка», вишинг, поддельные интернет-магазины.</div>
+                        <span class="news-arrow">→ Перейти на mvd.gov.by</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-scanner" class="page-content" style="display: none; opacity: 0;">
             <div class="search-card">
                 <h1 class="logo-main shimmer-text"><span>🛡️</span> CyberShield</h1>
                 <p style="color: #cbd5e1; font-size: 14px;">Экспертный анализ сетевого мошенничества</p>
@@ -709,6 +941,23 @@ HTML_LAYOUT = '''
                 </div>
             </div>
 
+            <div class="game-section" id="game-root">
+                <div class="test-tabs">
+                    <button class="tab-btn active" id="tab1" onclick="switchTest(1)">ВНИМАТЕЛЬНОСТЬ</button>
+                    <button class="tab-btn" id="tab2" onclick="switchTest(2)">ГРАМОТНОСТЬ</button>
+                </div>
+                <div id="game-header">
+                    <h4 class="shimmer-text" style="margin:0 0 15px; font-size: 18px;">🎮 Кибер-Экзамен</h4>
+                    <button class="btn-scan" id="start-game" style="width:100%; padding: 15px;">НАЧАТЬ ТЕСТ</button>
+                </div>
+                <div id="quiz-area" class="hidden">
+                    <div id="quiz-container">
+                        <p id="question-num" class="shimmer-text" style="font-size:12px; margin-bottom: 8px;"></p>
+                        <div id="options"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="memo-box active" style="margin-top: 20px;">
                 <div class="memo-header"><span class="shimmer-text">🤖 ИИ-Помощник CyberShield</span></div>
                 <div class="memo-content" style="padding-bottom:20px;">
@@ -760,23 +1009,6 @@ HTML_LAYOUT = '''
                     <button class="btn-scan" onclick="closeSim()" style="width: 100%; margin-top: 15px; background: transparent; border: 1px solid var(--accent-berry); color: var(--text-main);">ПРЕРВАТЬ СИМУЛЯЦИЮ</button>
                 </div>
             </div>
-
-            <div class="game-section" id="game-root">
-                <div class="test-tabs">
-                    <button class="tab-btn active" id="tab1" onclick="switchTest(1)">ВНИМАТЕЛЬНОСТЬ</button>
-                    <button class="tab-btn" id="tab2" onclick="switchTest(2)">ГРАМОТНОСТЬ</button>
-                </div>
-                <div id="game-header">
-                    <h4 class="shimmer-text" style="margin:0 0 15px; font-size: 18px;">🎮 Кибер-Экзамен</h4>
-                    <button class="btn-scan" id="start-game" style="width:100%; padding: 15px;">НАЧАТЬ ТЕСТ</button>
-                </div>
-                <div id="quiz-area" class="hidden">
-                    <div id="quiz-container">
-                        <p id="question-num" class="shimmer-text" style="font-size:12px; margin-bottom: 8px;"></p>
-                        <div id="options"></div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div id="page-password" class="page-content" style="display: none; opacity: 0;">
@@ -785,9 +1017,15 @@ HTML_LAYOUT = '''
                 <p style="color: #cbd5e1; font-size: 14px;">Анализ криптостойкости пароля в реальном времени</p>
                 <div class="input-wrapper">
                     <input type="text" id="password-input" placeholder="Введите пароль для проверки" autocomplete="off">
-                    <button type="button" class="btn-scan" onclick="generateStrongPassword()">ГЕНЕРАЦИЯ</button>
+                    <button type="button" class="btn-scan" onclick="renderPasswordReport(document.getElementById('password-input').value)">ПРОВЕРИТЬ</button>
                 </div>
                 <p style="font-size: 11px; color: var(--text-main); opacity: 0.6; margin-top: 12px;">Данные не сохраняются и не покидают браузер.</p>
+            </div>
+
+            <div class="generator-card">
+                <h4 class="shimmer-text">⚡ ГЕНЕРАТОР НАДЁЖНОГО ПАРОЛЯ</h4>
+                <p>Создайте безопасный пароль из 16 символов в один клик. Готовый пароль сразу появится в поле выше с полным разбором стойкости.</p>
+                <button type="button" class="btn-generate" onclick="generateStrongPassword()">ГЕНЕРАЦИЯ</button>
             </div>
 
             <div class="report-card" id="password-report" style="display:none;">
@@ -902,7 +1140,7 @@ HTML_LAYOUT = '''
 
         // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ СТРАНИЦ ---
         function switchPage(pageId) {
-            const pages = ['scanner', 'info', 'password'];
+            const pages = ['home', 'scanner', 'info', 'password'];
             
             pages.forEach(p => {
                 const tab = document.getElementById('menu-tab-' + p);
@@ -1122,7 +1360,7 @@ HTML_LAYOUT = '''
             
             appendBotMessage("ИИ печатает...");
             
-            fetch('/api/sim_chat', {
+            fetch('/cs/sim_chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({text: '', history: [], theme: currentSimTheme, is_start: true, turn: 0})
@@ -1170,7 +1408,7 @@ HTML_LAYOUT = '''
             input.value = '';
             appendBotMessage("ИИ печатает...");
 
-            fetch('/api/sim_chat', {
+            fetch('/cs/sim_chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({text: text, history: simHistory, theme: currentSimTheme, is_start: false, turn: simTurn})
@@ -1235,7 +1473,7 @@ HTML_LAYOUT = '''
             input.value = '';
             box.scrollTop = box.scrollHeight;
             
-            fetch('/api/helper_chat', {
+            fetch('/cs/helper_chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({text: text, history: helperHistory})
@@ -1355,7 +1593,7 @@ HTML_LAYOUT = '''
             const valueEl = document.getElementById('ping-value');
             const start = performance.now();
             try {
-                const res = await fetch('/api/ping?t=' + start, {cache: 'no-store'});
+                const res = await fetch('/cs/ping?t=' + start, {cache: 'no-store'});
                 if (!res.ok) throw new Error('bad');
                 const ms = Math.round(performance.now() - start);
                 valueEl.innerText = ms + ' ms';
@@ -1424,11 +1662,64 @@ def check():
 
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ ИНТЕГРАЦИИ GROQ (СИМУЛЯЦИЯ И ПОМОЩНИК) ---
 
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "llama3-8b-8192"]
+
+class GroqError(Exception):
+    pass
+
 def _call_groq(messages, temperature=0.8, max_tokens=180):
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {"model": "llama-3.1-8b-instant", "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
-    res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=15)
-    return res.json()['choices'][0]['message']['content'].strip()
+    """Вызов Groq API с обработкой ошибок и автоматической сменой модели при сбое."""
+    key = (GROQ_API_KEY or '').strip()
+    if not key:
+        raise GroqError("GROQ_API_KEY не задан в переменных окружения")
+
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+
+    last_err = None
+    for model in GROQ_MODELS:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        try:
+            res = requests.post(GROQ_URL, headers=headers, json=payload, timeout=20)
+        except requests.RequestException as e:
+            last_err = f"Сетевая ошибка: {e}"
+            continue
+
+        if res.status_code == 200:
+            try:
+                data = res.json()
+                return data['choices'][0]['message']['content'].strip()
+            except (ValueError, KeyError, IndexError) as e:
+                last_err = f"Неверный формат ответа Groq: {e}"
+                continue
+
+        # 401 — ключ невалиден; нет смысла пробовать другие модели
+        if res.status_code in (401, 403):
+            try:
+                msg = res.json().get('error', {}).get('message', res.text)
+            except Exception:
+                msg = res.text
+            raise GroqError(f"Ключ Groq отклонён ({res.status_code}): {msg}")
+
+        # 404 / 400 на модель — пробуем следующую
+        try:
+            msg = res.json().get('error', {}).get('message', res.text)
+        except Exception:
+            msg = res.text
+        last_err = f"HTTP {res.status_code} ({model}): {msg}"
+        if res.status_code not in (400, 404):
+            # 429, 500 и т.п. — тоже пробуем следующую модель, но запоминаем
+            continue
+
+    raise GroqError(last_err or "Неизвестная ошибка Groq")
 
 
 def _evaluate_defense(history, theme):
@@ -1456,7 +1747,7 @@ def _evaluate_defense(history, theme):
     return 50
 
 
-@app.route('/api/sim_chat', methods=['POST'])
+@app.route('/cs/sim_chat', methods=['POST'])
 def sim_chat():
     data = request.json or {}
     text = data.get('text', '')
@@ -1482,7 +1773,11 @@ def sim_chat():
         history.append({"role": "user", "content": "[Начни атаку первым коротким сообщением]"})
         try:
             reply = _call_groq(history, temperature=0.9, max_tokens=160)
-        except Exception:
+        except GroqError as e:
+            print(f"[GROQ sim_chat start] {e}")
+            reply = "Здравствуйте! Это служба безопасности банка. С вашей карты сейчас пытаются списать крупную сумму. Срочно подтвердите данные!"
+        except Exception as e:
+            print(f"[GROQ sim_chat start unknown] {e}")
             reply = "Здравствуйте! Это служба безопасности банка. С вашей карты сейчас пытаются списать крупную сумму. Срочно подтвердите данные!"
         history.append({"role": "assistant", "content": reply})
         return jsonify({"reply": reply, "history": history, "is_ended": False, "score": 0, "turn": 0})
@@ -1494,7 +1789,11 @@ def sim_chat():
         history.append({"role": "system", "content": "Это последний ход. Дай одну короткую финальную реплику (1-2 предложения) — либо последнюю попытку давления, либо раздражённое признание поражения. Не задавай больше вопросов. Не выходи из роли."})
         try:
             final_msg = _call_groq(history, temperature=0.7, max_tokens=120)
-        except Exception:
+        except GroqError as e:
+            print(f"[GROQ sim_chat final] {e}")
+            final_msg = "Ладно, потом перезвоню."
+        except Exception as e:
+            print(f"[GROQ sim_chat final unknown] {e}")
             final_msg = "Ладно, потом перезвоню."
         history.pop(-2)
         history.append({"role": "assistant", "content": final_msg})
@@ -1503,37 +1802,49 @@ def sim_chat():
 
     try:
         reply = _call_groq(history, temperature=0.8, max_tokens=160)
-    except Exception:
+    except GroqError as e:
+        print(f"[GROQ sim_chat] {e}")
+        reply = "Алло, вы меня слышите? Время уходит, нужно срочно решать!"
+    except Exception as e:
+        print(f"[GROQ sim_chat unknown] {e}")
         reply = "Алло, вы меня слышите? Время уходит, нужно срочно решать!"
     history.append({"role": "assistant", "content": reply})
     return jsonify({"reply": reply, "history": history, "is_ended": False, "score": 0, "turn": new_turn})
 
-@app.route('/api/ping')
+@app.route('/cs/ping')
 def ping():
     return jsonify({"ok": True, "ts": time.time()})
 
 
-@app.route('/api/helper_chat', methods=['POST'])
+@app.route('/cs/helper_chat', methods=['POST'])
 def helper_chat():
     data = request.json or {}
-    text = data.get('text', '')
+    text = (data.get('text') or '').strip()
     history = data.get('history', [])
-    
-    sys_prompt = "Ты ИИ-помощник CyberShield. Помогай пользователю распознавать мошенников и давай советы по кибербезопасности. Отвечай кратко, без воды, максимум 3 предложения."
-    
+
+    sys_prompt = (
+        "Ты ИИ-помощник CyberShield. Помогай пользователю распознавать мошенников "
+        "и давай советы по кибербезопасности. Отвечай кратко и по делу, "
+        "максимум 3-4 предложения, на русском языке."
+    )
+
     if not history:
         history = [{"role": "system", "content": sys_prompt}]
-        
+
+    if not text:
+        return jsonify({"reply": "Напишите ваш вопрос.", "history": history})
+
     history.append({"role": "user", "content": text})
-    
+
     try:
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        payload = {"model": "llama-3.1-8b-instant", "messages": history, "temperature": 0.3, "max_tokens": 200}
-        res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
-        reply = res.json()['choices'][0]['message']['content']
-    except:
-        reply = "Произошла ошибка при подключении к ИИ. Пожалуйста, проверьте API-ключ."
-        
+        reply = _call_groq(history, temperature=0.4, max_tokens=300)
+    except GroqError as e:
+        print(f"[GROQ helper_chat] {e}")
+        reply = f"ИИ-помощник временно недоступен. Причина: {e}"
+    except Exception as e:
+        print(f"[GROQ helper_chat unknown] {e}")
+        reply = "ИИ-помощник временно недоступен. Попробуйте через минуту."
+
     history.append({"role": "assistant", "content": reply})
     return jsonify({"reply": reply, "history": history})
 
