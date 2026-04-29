@@ -10,7 +10,7 @@ app = Flask(__name__)
 # --- КЛЮЧИ ---
 VT_API_KEY = '5f6d8f149fe5c6b3f6f701bb712f2955fb75db2a7dfd83e85812841c372b9359'
 HF_TOKEN = 'Hf_jIDGDeAzDSfELiLNidAbpjTFdKcfRbRgBJ'
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')  # Read from Replit Secrets
+GROQ_API_KEY = os.environ.get('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', '')  # Read from Replit Secrets
 STATS_FILE = 'stats.txt'
 
 def get_real_stats():
