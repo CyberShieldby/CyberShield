@@ -89,7 +89,7 @@ HTML_LAYOUT = '''
             100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
 
-        .rays-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        .rays-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; overflow: hidden; }
         .ray { 
             position: absolute; 
             width: 1px; height: 180px;
@@ -97,13 +97,42 @@ HTML_LAYOUT = '''
             animation: rise linear infinite; opacity: 0; bottom: -200px;
             will-change: transform, opacity;
         }
+        /* луч НИКОГДА не гаснет в начале — всегда долетает минимум до середины */
         @keyframes rise { 
             0% { transform: translateY(0); opacity: 0; } 
-            15% { opacity: 0.5; } 
-            85% { opacity: 0.5; }
+            12% { opacity: 0.55; } 
+            88% { opacity: 0.55; }
             100% { transform: translateY(-135vh); opacity: 0; } 
         }
-        
+        @keyframes rise-fade-mid { 
+            0% { transform: translateY(0); opacity: 0; } 
+            15% { opacity: 0.6; } 
+            45% { transform: translateY(-55vh); opacity: 0.55; }
+            55% { transform: translateY(-65vh); opacity: 0; }
+            100% { transform: translateY(-130vh); opacity: 0; } 
+        }
+        @keyframes rise-fade-late { 
+            0% { transform: translateY(0); opacity: 0; } 
+            15% { opacity: 0.55; } 
+            70% { transform: translateY(-85vh); opacity: 0.5; }
+            85% { transform: translateY(-105vh); opacity: 0; }
+            100% { transform: translateY(-130vh); opacity: 0; } 
+        }
+
+        .ray-thick {
+            position: absolute;
+            width: 3px; height: 240px;
+            background: linear-gradient(to top, #ffffff 0%, var(--accent-berry) 30%, rgba(244,114,182,0.4) 70%, transparent 100%);
+            box-shadow: 0 0 18px var(--accent-berry), 0 0 38px rgba(244,114,182,0.55);
+            border-radius: 3px;
+            animation: rise linear infinite; opacity: 0; bottom: -260px;
+            will-change: transform, opacity;
+        }
+        body.light-mode .ray-thick {
+            background: linear-gradient(to top, #ffffff 0%, #ec4899 30%, rgba(236,72,153,0.5) 70%, transparent 100%);
+            box-shadow: 0 0 18px #ec4899, 0 0 40px rgba(236,72,153,0.5);
+        }
+
         .ray-short {
             position: absolute; 
             width: 2px; height: 150px;
@@ -119,76 +148,89 @@ HTML_LAYOUT = '''
             100% { transform: translateY(-50vh); opacity: 0; }
         }
 
-        .container { max-width: 650px; margin: 0 auto; padding: 20px; padding-top: 70px; padding-bottom: 50px; }
-        
-        /* --- БОКОВОЕ МЕНЮ И КНОПКА --- */
+        .container { max-width: 650px; margin: 0 auto; padding: 20px 20px 50px 20px; padding-top: 30px; padding-left: 80px; }
+
+        /* --- ПОСТОЯННОЕ БОКОВОЕ МЕНЮ (рейл) --- */
         .hamburger-btn {
-            position: fixed; top: 15px; left: 15px; z-index: 10000;
-            width: 45px; height: 45px; border-radius: 50%;
+            position: fixed; top: 14px; left: 8px; z-index: 10001;
+            width: 44px; height: 44px; border-radius: 50%;
             background: rgba(30, 27, 75, 0.9); border: 2px solid var(--accent-berry);
             display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
             cursor: pointer; box-shadow: 0 0 15px rgba(244, 114, 182, 0.3);
-            transition: all 0.3s var(--smooth); backdrop-filter: blur(5px);
+            transition: all 0.45s var(--smooth); backdrop-filter: blur(5px);
         }
-        .hamburger-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(244, 114, 182, 0.6); }
+        .hamburger-btn:hover { transform: scale(1.06); box-shadow: 0 0 20px rgba(244, 114, 182, 0.6); }
         .hamburger-btn div { width: 22px; height: 2px; background: var(--accent-berry); transition: 0.4s var(--smooth); border-radius: 2px; }
-        
-        /* Светлый режим: тёмная подложка с белыми палочками — иконка остаётся видимой */
         body.light-mode .hamburger-btn {
             background: linear-gradient(135deg, var(--accent-berry), #ec4899);
             border-color: #ffffff;
             box-shadow: 0 0 15px rgba(244, 114, 182, 0.55);
         }
         body.light-mode .hamburger-btn div { background: #ffffff; }
-        
         .hamburger-btn.open div:nth-child(1) { transform: translate(-7px, 7px) rotate(90deg); }
         .hamburger-btn.open div:nth-child(2) { opacity: 1; transform: rotate(90deg); }
         .hamburger-btn.open div:nth-child(3) { transform: translate(7px, -7px) rotate(90deg); }
 
+        /* лёгкая тень при раскрытии — БЕЗ blur, только мягкий dim */
         .menu-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(6px);
-            z-index: 9998; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--smooth);
+            background: rgba(15, 23, 42, 0.35);
+            z-index: 9998; opacity: 0; pointer-events: none;
+            transition: opacity 0.45s var(--smooth);
         }
         .menu-overlay.active { opacity: 1; pointer-events: all; }
 
         .side-menu {
-            position: fixed; top: 0; left: -280px; width: 260px; height: 100%;
+            position: fixed; top: 0; left: 0; width: 60px; height: 100%;
             background: var(--nav-bg); z-index: 9999;
-            box-shadow: 5px 0 30px rgba(0,0,0,0.6);
-            padding: 80px 20px 20px; display: flex; flex-direction: column; gap: 15px;
-            transition: left 0.5s var(--ultra-smooth);
+            box-shadow: 4px 0 22px rgba(0,0,0,0.45);
+            padding: 70px 8px 20px; display: flex; flex-direction: column; gap: 10px;
+            transition: width 0.55s var(--ultra-smooth);
             border-right: 1px solid rgba(244, 114, 182, 0.3);
-            box-sizing: border-box;
+            box-sizing: border-box; overflow: hidden;
         }
-        .side-menu.active { left: 0; }
+        .side-menu.active { width: 260px; padding: 70px 14px 20px; }
 
         .menu-item {
-            padding: 18px 20px; background: rgba(0,0,0,0.3); border-radius: 15px;
-            font-weight: 800; font-size: 14px; cursor: pointer; border: 1px solid rgba(244, 114, 182, 0.1);
-            transition: all 0.4s var(--smooth); color: var(--text-main);
-            opacity: 0; transform: translateX(-30px); letter-spacing: 1px;
-            display: flex; align-items: center; gap: 10px;
+            padding: 14px 12px; background: rgba(0,0,0,0.3); border-radius: 14px;
+            font-weight: 800; font-size: 14px; cursor: pointer; border: 1px solid rgba(244, 114, 182, 0.12);
+            transition: background 0.35s var(--smooth), color 0.35s var(--smooth),
+                        border-color 0.35s var(--smooth), box-shadow 0.35s var(--smooth),
+                        transform 0.35s var(--smooth);
+            color: var(--text-main); letter-spacing: 1px;
+            display: flex; align-items: center; gap: 12px; white-space: nowrap; overflow: hidden;
         }
-        body.light-mode .menu-item { background: rgba(244, 114, 182, 0.08); }
-        .side-menu.active .menu-item { opacity: 1; transform: translateX(0); }
-        .side-menu .menu-item:nth-child(1) { transition-delay: 0.1s; }
-        .side-menu .menu-item:nth-child(2) { transition-delay: 0.2s; }
-        .side-menu .menu-item:nth-child(3) { transition-delay: 0.3s; }
-        .side-menu .menu-item:nth-child(4) { transition-delay: 0.4s; }
-        .menu-item:hover, .menu-item.active { 
-            background: var(--btn-static); color: #1E1B4B; 
-            border-color: transparent; box-shadow: 0 0 15px rgba(244, 114, 182, 0.4); 
-            transform: scale(1.02) translateX(0);
+        body.light-mode .menu-item { background: rgba(244, 114, 182, 0.10); }
+        .menu-item .menu-ico { font-size: 20px; line-height: 1; flex: 0 0 22px; text-align: center; display: inline-block; }
+        .menu-item .menu-label {
+            opacity: 0; transform: translateX(-6px);
+            transition: opacity 0.35s var(--smooth), transform 0.45s var(--smooth);
+            display: inline-block;
+        }
+        .side-menu.active .menu-item .menu-label { opacity: 1; transform: translateX(0); transition-delay: 0.1s; }
+        .menu-item:hover, .menu-item.active {
+            background: var(--btn-static); color: #1E1B4B;
+            border-color: transparent; box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
+            transform: scale(1.03);
         }
 
         .tg-menu-btn {
             margin-top: 5px; white-space: nowrap; font-size: 13px; text-transform: uppercase;
-            opacity: 0; transform: translateY(20px); transition: all 0.5s 0.4s var(--smooth);
+            opacity: 0; transform: translateY(8px);
+            transition: opacity 0.4s var(--smooth), transform 0.4s var(--smooth);
             display: flex; justify-content: center; width: 100%; box-sizing: border-box;
+            pointer-events: none;
         }
-        .side-menu.active .tg-menu-btn { opacity: 1; transform: translateY(0); }
+        .side-menu.active .tg-menu-btn { opacity: 1; transform: translateY(0); pointer-events: auto; transition-delay: 0.18s; }
+        .side-menu hr { opacity: 0; transition: opacity 0.4s var(--smooth); }
         .side-menu.active hr { opacity: 1; }
+
+        @media (max-width: 720px) {
+            .container { padding-left: 70px; }
+            .side-menu { width: 54px; padding: 70px 6px 20px; }
+            .side-menu.active { width: 240px; padding: 70px 12px 20px; }
+            .hamburger-btn { left: 6px; }
+        }
 
         .tg-super-btn {
             display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -747,8 +789,7 @@ HTML_LAYOUT = '''
             position: relative;
             overflow: hidden;
             padding: 6px 0 16px;
-            -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
-                    mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+            border-radius: 18px;
         }
         .news-track {
             display: flex; gap: 14px;
@@ -826,24 +867,55 @@ HTML_LAYOUT = '''
             letter-spacing: 0.4px;
         }
 
-        /* СТРЕЛКИ ЛЕНТЫ */
-        .news-arrows {
-            display: flex; justify-content: flex-end; gap: 8px;
-            margin-top: 6px;
-        }
+        /* СТРЕЛКИ ЛЕНТЫ — ВНУТРИ КАРУСЕЛИ ПОВЕРХ ПЛИТОК */
         .news-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
             width: 38px; height: 38px; border-radius: 50%;
-            background: rgba(30, 27, 75, 0.6); border: 1px solid rgba(244,114,182,0.35);
-            color: var(--text-main); cursor: pointer;
+            background: rgba(30, 27, 75, 0.78); border: 1px solid rgba(244,114,182,0.55);
+            color: #fff; cursor: pointer; z-index: 5;
             display: inline-flex; align-items: center; justify-content: center;
-            font-size: 18px; transition: all 0.3s var(--smooth);
+            font-size: 22px; line-height: 1; padding-bottom: 3px;
+            transition: background 0.3s var(--smooth), transform 0.3s var(--smooth), box-shadow 0.3s var(--smooth);
             backdrop-filter: blur(6px);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
         }
-        .news-arrow:hover, .news-arrow:active {
+        .news-arrow.prev { left: 8px; }
+        .news-arrow.next { right: 8px; }
+        .news-arrow:hover {
             background: var(--accent-berry); color: #1E1B4B;
-            transform: translateY(-3px); box-shadow: 0 6px 18px rgba(244,114,182,0.4);
+            transform: translateY(-50%) scale(1.08);
+            box-shadow: 0 8px 22px rgba(244,114,182,0.55);
         }
-        body.light-mode .news-arrow { background: #ffffff; border-color: rgba(244,114,182,0.45); box-shadow: 0 2px 8px rgba(30,27,75,0.08); }
+        .news-arrow:active { transform: translateY(-50%) scale(0.94); }
+        body.light-mode .news-arrow { background: rgba(255,255,255,0.92); border-color: rgba(244,114,182,0.5); color: #1E1B4B; box-shadow: 0 4px 14px rgba(30,27,75,0.18); }
+        .news-tile { transition: transform 0.45s var(--ultra-smooth), box-shadow 0.45s var(--ultra-smooth), border-color 0.4s, filter 0.4s; }
+        .news-tile:hover { filter: brightness(1.07) saturate(1.05); }
+
+        /* БЛОК «РЕСПУБЛИКА БЕЛАРУСЬ» */
+        .home-republic {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        @media (max-width: 520px) { .home-republic { grid-template-columns: 1fr; } }
+        .rep-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(244,114,182,0.22);
+            border-radius: 16px;
+            padding: 16px 14px;
+            transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
+        }
+        .rep-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-berry);
+            box-shadow: 0 10px 26px rgba(244,114,182,0.22);
+        }
+        .rep-num {
+            font-size: 22px; font-weight: 900; color: var(--accent-berry);
+            letter-spacing: 0.5px; margin-bottom: 6px;
+            text-shadow: 0 0 18px rgba(244,114,182,0.4);
+        }
+        .rep-title { font-size: 13.5px; font-weight: 800; margin-bottom: 6px; color: var(--text-main); }
+        .rep-desc { font-size: 12px; line-height: 1.5; opacity: 0.82; color: var(--text-main); }
+        body.light-mode .rep-card { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
 
         /* СВЕТЛАЯ ТЕМА — ЧИТАЕМОСТЬ */
         body.light-mode { color: #1E1B4B; }
@@ -970,17 +1042,17 @@ HTML_LAYOUT = '''
     </div>
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
     <div class="side-menu" id="side-menu">
-        <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home'); toggleMenu()">
-            <span>🏡</span> ГЛАВНАЯ
+        <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home')">
+            <span class="menu-ico">🏠</span><span class="menu-label">ГЛАВНАЯ</span>
         </a>
-        <a class="menu-item" id="menu-tab-scanner" onclick="switchPage('scanner'); toggleMenu()">
-            <span>🔐</span> ПРОВЕРЯТОР
+        <a class="menu-item" id="menu-tab-scanner" onclick="switchPage('scanner')">
+            <span class="menu-ico">🛡️</span><span class="menu-label">ПРОВЕРЯТОР</span>
         </a>
-        <a class="menu-item" id="menu-tab-info" onclick="switchPage('info'); toggleMenu()">
-            <span>🎓</span> ИНФОРМАЦИЯ / ТЕСТЫ
+        <a class="menu-item" id="menu-tab-info" onclick="switchPage('info')">
+            <span class="menu-ico">📚</span><span class="menu-label">ИНФОРМАЦИЯ / ТЕСТЫ</span>
         </a>
-        <a class="menu-item" id="menu-tab-password" onclick="switchPage('password'); toggleMenu()">
-            <span>🗝️</span> ПАРОЛЬНЫЙ СТРАЖ
+        <a class="menu-item" id="menu-tab-password" onclick="switchPage('password')">
+            <span class="menu-ico">🔑</span><span class="menu-label">ПАРОЛЬНЫЙ СТРАЖ</span>
         </a>
         
         <hr style="width: 80%; border: none; border-top: 1px solid rgba(244, 114, 182, 0.3); margin: auto auto 10px auto; opacity: 0; transition: opacity 0.5s;">
@@ -996,13 +1068,12 @@ HTML_LAYOUT = '''
         <div id="page-home" class="page-content">
 
             <section class="home-hero">
-                <div class="home-hero-badge"><span class="hero-dot"></span> СИСТЕМА АКТИВНА · {{ stats_count }} {{ scans_word }}</div>
-                <h1 class="home-hero-title">Цифровая безопасность<br><span class="home-hero-accent">без компромиссов</span></h1>
-                <p class="home-hero-sub">CyberShield — белорусский интеллектуальный щит. Проверка ссылок, разоблачение мошенников и тренировка реакции на цифровые угрозы — всё в одном месте, с понятным языком и без рекламы.</p>
+                <h1 class="home-hero-title">Защита, которая<br><span class="home-hero-accent">говорит на твоём языке</span></h1>
+                <p class="home-hero-sub">CyberShield — белорусский интеллектуальный щит. Проверка ссылок, разоблачение мошенников и тренировка реакции на цифровые угрозы — всё в одном месте, простым языком и без рекламы.</p>
                 <p class="home-hero-extra">Каждый день в сети появляются десятки новых поддельных сайтов, фейковых писем «от банка» и звонков «из службы безопасности». Мы помогаем понять, как они работают, и учим спокойно, без паники, отказывать злоумышленнику. Проект сделан для всех — школьников, родителей, пожилых людей и тех, кто впервые открыл интернет.</p>
                 <div class="home-hero-cta">
                     <a class="hero-btn primary" onclick="switchPage('scanner')">Проверить ссылку</a>
-                    <a class="hero-btn ghost" onclick="switchPage('info')">Учиться защите</a>
+                    <a class="hero-btn ghost" onclick="switchPage('info')">Информация о киберзащите</a>
                 </div>
             </section>
 
@@ -1012,38 +1083,38 @@ HTML_LAYOUT = '''
                     <div class="home-stat-label">Ссылок проверено</div>
                 </div>
                 <div class="home-stat">
-                    <div class="home-stat-num">24/7</div>
-                    <div class="home-stat-label">Мониторинг сети</div>
+                    <div class="home-stat-num">{{ total_threats }}</div>
+                    <div class="home-stat-label">Угроз раскрыто</div>
                 </div>
                 <div class="home-stat">
-                    <div class="home-stat-num">∞</div>
-                    <div class="home-stat-label">Симуляций ИИ</div>
+                    <div class="home-stat-num">100%</div>
+                    <div class="home-stat-label">Бесплатно и анонимно</div>
                 </div>
             </section>
 
             <section class="home-section">
                 <div class="home-section-head">
-                    <h3>✨ О нашем сервисе</h3>
+                    <h3>🛡️ О нашем сервисе</h3>
                     <span>Нажмите на нужный блок — откроется соответствующая вкладка</span>
                 </div>
                 <div class="home-about-grid">
                     <div class="home-about-card" onclick="switchPage('scanner')">
-                        <div class="home-about-icon">🔐</div>
+                        <div class="home-about-icon">🛡️</div>
                         <div class="home-about-title">ПРОВЕРЯТОР ССЫЛОК</div>
                         <div class="home-about-desc">Глубокий анализ URL через VirusTotal и собственный ИИ-вердикт. Поможем понять, можно ли переходить по ссылке.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('info')">
-                        <div class="home-about-icon">🎓</div>
+                        <div class="home-about-icon">📚</div>
                         <div class="home-about-title">ИНФОРМАЦИЯ И ТЕСТЫ</div>
                         <div class="home-about-desc">Памятка по безопасности, справочник угроз, ИИ-помощник и кибер-экзамен на внимательность и грамотность.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('info')">
-                        <div class="home-about-icon">⚔️</div>
+                        <div class="home-about-icon">🔥</div>
                         <div class="home-about-title">СИМУЛЯЦИИ С ИИ</div>
                         <div class="home-about-desc">Сразитесь с виртуальным мошенником в чате. ИИ Groq отыграет реальную атаку, а мы оценим вашу защиту.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('password')">
-                        <div class="home-about-icon">🗝️</div>
+                        <div class="home-about-icon">🔑</div>
                         <div class="home-about-title">ПАРОЛЬНЫЙ СТРАЖ</div>
                         <div class="home-about-desc">Анализ криптостойкости и генератор по-настоящему надёжных паролей. Все вычисления идут только в вашем браузере.</div>
                     </div>
@@ -1064,10 +1135,65 @@ HTML_LAYOUT = '''
 
             <section class="home-section">
                 <div class="home-section-head">
-                    <h3>📰 Лента кибербезопасности РБ</h3>
-                    <span>Официальные источники — листайте стрелками или потяните пальцем</span>
+                    <h3>🇧🇾 Республика Беларусь и кибербезопасность</h3>
+                    <span>Что важно знать каждому жителю страны</span>
+                </div>
+
+                <div class="home-republic">
+                    <div class="rep-card">
+                        <div class="rep-num">152-З</div>
+                        <div class="rep-title">Закон «О защите персональных данных»</div>
+                        <div class="rep-desc">Регулирует обработку и хранение ваших данных. Любая компания обязана получать согласие на их сбор, а вы имеете право в любой момент его отозвать.</div>
+                    </div>
+                    <div class="rep-card">
+                        <div class="rep-num">УК §349</div>
+                        <div class="rep-title">Уголовная ответственность за киберпреступления</div>
+                        <div class="rep-desc">Статьи 349–355 Уголовного кодекса РБ предусматривают наказание за несанкционированный доступ, хищение данных, фишинг и вредоносное ПО.</div>
+                    </div>
+                    <div class="rep-card">
+                        <div class="rep-num">102</div>
+                        <div class="rep-title">Единый телефон милиции</div>
+                        <div class="rep-desc">Если вы стали жертвой мошенников — звоните 102 круглосуточно. Управление «К» расследует преступления в сфере высоких технологий.</div>
+                    </div>
+                    <div class="rep-card">
+                        <div class="rep-num">CERT.BY</div>
+                        <div class="rep-title">Государственный центр реагирования</div>
+                        <div class="rep-desc">CERT при ОАЦ принимает обращения о киберинцидентах и предупреждает население о новых атаках на белорусские сервисы.</div>
+                    </div>
+                </div>
+
+                <div class="home-info-block" style="margin-top:18px;">
+                    <h4 class="shimmer-text">📞 Если вас уже обманули</h4>
+                    <ol style="padding-left:20px; font-size:13px; line-height:1.7; opacity:0.88; margin:8px 0 0;">
+                        <li>Немедленно позвоните в банк по номеру с обратной стороны карты и заблокируйте её.</li>
+                        <li>Сохраните переписку, скриншоты, номера телефонов и ссылки — это доказательства.</li>
+                        <li>Подайте заявление в ближайшее РУВД или по телефону <b>102</b>.</li>
+                        <li>Сообщите об инциденте в ОАЦ через форму на <b>oac.gov.by</b>.</li>
+                        <li>Поменяйте пароли на всех сервисах, где могли «засветиться» данные.</li>
+                    </ol>
+                </div>
+
+                <div class="home-info-block" style="margin-top:18px;">
+                    <h4 class="shimmer-text">🧠 5 правил цифровой гигиены</h4>
+                    <p style="margin-bottom:10px;">Эти простые привычки уже спасли тысячи белорусов от потери денег и личных данных. Освойте их сами и научите близких — особенно пожилых родственников.</p>
+                    <ul>
+                        <li><b>Не торопиться.</b> Любое срочное «решение прямо сейчас» — красный флаг мошенника.</li>
+                        <li><b>Перезванивать.</b> Если звонят «из банка» — кладите трубку и набирайте номер на карте.</li>
+                        <li><b>Не вводить коды.</b> Ни одна служба не имеет права просить код из СМС или CVC.</li>
+                        <li><b>Проверять адрес сайта.</b> Одна лишняя буква — и вы на поддельной странице.</li>
+                        <li><b>Включить двухфакторную защиту.</b> Это лучшая страховка ваших аккаунтов.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="home-section">
+                <div class="home-section-head">
+                    <h3>📰 Лента кибербезопасности</h3>
+                    <span>Официальные источники — Республика Беларусь</span>
                 </div>
                 <div class="news-ticker-wrap" id="news-ticker">
+                    <button class="news-arrow news-arrow-edge prev" id="news-prev" aria-label="Назад">‹</button>
+                    <button class="news-arrow news-arrow-edge next" id="news-next" aria-label="Вперёд">›</button>
                     <div class="news-track" id="news-track">
                         <a href="https://mvd.gov.by/ru/page/upravlenie-k" target="_blank" rel="noopener" class="news-tile">
                             <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=800&q=80&fit=crop&auto=format');"></div>
@@ -1117,11 +1243,39 @@ HTML_LAYOUT = '''
                                 <div class="news-tile-source">mvd.gov.by/ru/news</div>
                             </div>
                         </a>
+                        <a href="https://www.nbrb.by" target="_blank" rel="noopener" class="news-tile">
+                            <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1601597111158-2fceff292cdc?w=800&q=80&fit=crop&auto=format');"></div>
+                            <span class="news-tile-pill">НАЦБАНК РБ</span>
+                            <div class="news-tile-fog">
+                                <div class="news-tile-title">Финансовая безопасность и защита банковских карт</div>
+                                <div class="news-tile-source">nbrb.by</div>
+                            </div>
+                        </a>
+                        <a href="https://www.mininform.gov.by" target="_blank" rel="noopener" class="news-tile">
+                            <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80&fit=crop&auto=format');"></div>
+                            <span class="news-tile-pill">МИНИНФОРМ</span>
+                            <div class="news-tile-fog">
+                                <div class="news-tile-title">Министерство информации РБ — медиаграмотность</div>
+                                <div class="news-tile-source">mininform.gov.by</div>
+                            </div>
+                        </a>
+                        <a href="https://edu.gov.by" target="_blank" rel="noopener" class="news-tile">
+                            <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80&fit=crop&auto=format');"></div>
+                            <span class="news-tile-pill">МИНОБР РБ</span>
+                            <div class="news-tile-fog">
+                                <div class="news-tile-title">Цифровая грамотность школьников и студентов</div>
+                                <div class="news-tile-source">edu.gov.by</div>
+                            </div>
+                        </a>
+                        <a href="https://kgb.by" target="_blank" rel="noopener" class="news-tile">
+                            <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80&fit=crop&auto=format');"></div>
+                            <span class="news-tile-pill">КГБ РБ</span>
+                            <div class="news-tile-fog">
+                                <div class="news-tile-title">Информационная безопасность государства</div>
+                                <div class="news-tile-source">kgb.by</div>
+                            </div>
+                        </a>
                     </div>
-                </div>
-                <div class="news-arrows">
-                    <button class="news-arrow" id="news-prev" aria-label="Назад">‹</button>
-                    <button class="news-arrow" id="news-next" aria-label="Вперёд">›</button>
                 </div>
             </section>
 
@@ -1129,7 +1283,7 @@ HTML_LAYOUT = '''
 
         <div id="page-scanner" class="page-content" style="display: none; opacity: 0;">
             <div class="search-card">
-                <h1 class="logo-main shimmer-text"><span>🔐</span> CyberShield</h1>
+                <h1 class="logo-main shimmer-text"><span>🛡️</span> CyberShield</h1>
                 <p style="color: #cbd5e1; font-size: 14px;">Экспертный анализ сетевого мошенничества</p>
                 <form id="check-form" action="/check" method="POST" onsubmit="showLoading()">
                     <div class="input-wrapper">
@@ -1177,7 +1331,7 @@ HTML_LAYOUT = '''
             {% endif %}
 
             <div class="radar-box">
-                <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 16px;">🛰️ ЦЕНТР МОНИТОРИНГА</h4>
+                <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 16px;">🌐 ЦЕНТР МОНИТОРИНГА</h4>
                 <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px;">Логирование активности узлов CyberShield</p>
                 <div class="radar-circle">
                     <div class="blip blip1"></div>
@@ -1193,7 +1347,7 @@ HTML_LAYOUT = '''
         <div id="page-info" class="page-content" style="display: none; opacity: 0;">
             <div class="memo-box" id="memo-container">
                 <div class="memo-header" onclick="toggleAccordion('memo-container')">
-                    <span class="shimmer-text">💎 Памятка по безопасности</span>
+                    <span class="shimmer-text">💡 Памятка по безопасности</span>
                     <div class="chevron"></div>
                 </div>
                 <div class="memo-content">
@@ -1205,7 +1359,7 @@ HTML_LAYOUT = '''
             </div>
 
             <div class="report-card">
-                <h3 class="shimmer-text" style="text-align:center; margin-top:0;">📜 СПРАВОЧНИК</h3>
+                <h3 class="shimmer-text" style="text-align:center; margin-top:0;">📖 СПРАВОЧНИК</h3>
                 <p style="font-size: 13px; color: var(--text-main); text-align: center; opacity: 0.8; margin-bottom: 20px;">Продвинутая база данных кибер-угроз нового поколения.</p>
                 <div class="detail-box safe">
                     <div class="detail-row">
@@ -1266,7 +1420,7 @@ HTML_LAYOUT = '''
                     <button class="tab-btn" id="tab2" onclick="switchTest(2)">ГРАМОТНОСТЬ</button>
                 </div>
                 <div id="game-header">
-                    <h4 class="shimmer-text" style="margin:0 0 15px; font-size: 18px;">🎯 Кибер-Экзамен</h4>
+                    <h4 class="shimmer-text" style="margin:0 0 15px; font-size: 18px;">🎮 Кибер-Экзамен</h4>
                     <button class="btn-scan" id="start-game" style="width:100%; padding: 15px;">НАЧАТЬ ТЕСТ</button>
                 </div>
                 <div id="quiz-area" class="hidden">
@@ -1278,7 +1432,7 @@ HTML_LAYOUT = '''
             </div>
 
             <div class="memo-box active" style="margin-top: 20px;">
-                <div class="memo-header"><span class="shimmer-text">✨ ИИ-Помощник CyberShield</span></div>
+                <div class="memo-header"><span class="shimmer-text">🤖 ИИ-Помощник CyberShield</span></div>
                 <div class="memo-content" style="padding-bottom:20px;">
                     <p style="font-size: 12px; margin-bottom: 10px;">Спросите нашего ИИ (Groq), как защититься от угроз или что делать в подозрительной ситуации.</p>
                     <div id="helper-chat-box" class="cyber-logs" style="height: 180px; background: rgba(0,0,0,0.4); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
@@ -1292,7 +1446,7 @@ HTML_LAYOUT = '''
             </div>
             
             <div class="game-section" id="sim-root">
-                <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 18px; text-align: center;">⚔️ ЗОНА СИМУЛЯЦИЙ</h4>
+                <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 18px; text-align: center;">🔥 ЗОНА СИМУЛЯЦИЙ</h4>
                 <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px; text-align: center;">Тренировка противодействия реальным угрозам с ИИ Groq</p>
                 
                 <div id="sim-selector">
@@ -1302,11 +1456,11 @@ HTML_LAYOUT = '''
                             <b style="font-size: 12px; color: var(--accent-berry);">СОЦ. ИНЖЕНЕРИЯ</b>
                         </div>
                         <div class="sim-card" onclick="openSimulation('Техподдержка')">
-                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">🛠️</span>
+                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">👨‍💻</span>
                             <b style="font-size: 12px; color: var(--accent-berry);">ТЕХПОДДЕРЖКА</b>
                         </div>
                         <div class="sim-card" onclick="openSimulation('Шантаж')">
-                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">🪬</span>
+                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">🔒</span>
                             <b style="font-size: 12px; color: var(--accent-berry);">ШАНТАЖ</b>
                         </div>
                     </div>
@@ -1331,7 +1485,7 @@ HTML_LAYOUT = '''
 
         <div id="page-password" class="page-content" style="display: none; opacity: 0;">
             <div class="search-card">
-                <h1 class="logo-main shimmer-text"><span>🗝️</span> Парольный Страж</h1>
+                <h1 class="logo-main shimmer-text"><span>🔑</span> Парольный Страж</h1>
                 <p style="color: #cbd5e1; font-size: 14px;">Анализ криптостойкости пароля в реальном времени</p>
                 <div class="input-wrapper">
                     <input type="text" id="password-input" placeholder="Введите пароль для проверки" autocomplete="off">
@@ -1341,7 +1495,7 @@ HTML_LAYOUT = '''
             </div>
 
             <div class="generator-card">
-                <h4 class="shimmer-text">🪄 ГЕНЕРАТОР НАДЁЖНОГО ПАРОЛЯ</h4>
+                <h4 class="shimmer-text">⚡ ГЕНЕРАТОР НАДЁЖНОГО ПАРОЛЯ</h4>
                 <p>Создайте безопасный пароль из 16 символов в один клик. Готовый пароль сразу появится в поле выше с полным разбором стойкости.</p>
                 <button type="button" class="btn-generate" onclick="generateStrongPassword()">ГЕНЕРАЦИЯ</button>
             </div>
@@ -1439,8 +1593,8 @@ HTML_LAYOUT = '''
         </div>
         
         <div class="nav-island">
-            <div class="nav-link shimmer-text" onclick="toggleTheme()">🎨 ТЕМА</div>
-            <div class="nav-link shimmer-text" onclick="shareSite()">📤 ССЫЛКА</div>
+            <div class="nav-link shimmer-text" onclick="toggleTheme()">🌓 ТЕМА</div>
+            <div class="nav-link shimmer-text" onclick="shareSite()">🔗 ССЫЛКА</div>
         </div>
     </div>
 
@@ -1513,17 +1667,37 @@ HTML_LAYOUT = '''
 
         // --- ЛУЧИ ФОНА ---
         const raysContainer = document.getElementById('rays');
-        for (let i = 0; i < 15; i++) {
+        // Основные тонкие лучи: 25 шт, разные варианты гашения, НИКОГДА не гаснут в начале
+        const fadeVariants = ['rise', 'rise', 'rise', 'rise-fade-late', 'rise-fade-mid'];
+        for (let i = 0; i < 25; i++) {
             const ray = document.createElement('div'); ray.className = 'ray';
-            ray.style.left = Math.random() * 100 + '%'; 
-            ray.style.animationDuration = (Math.random() * 2 + 4) + 's';
-            ray.style.animationDelay = Math.random() * 5 + 's';
-            ray.style.opacity = Math.random() * 0.7 + 0.2;
+            ray.style.left = Math.random() * 100 + '%';
+            const dur = (Math.random() * 2.6 + 4.2);
+            ray.style.animationDuration = dur.toFixed(2) + 's';
+            ray.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
+            ray.style.opacity = (Math.random() * 0.55 + 0.35).toFixed(2);
+            const variant = fadeVariants[Math.floor(Math.random() * fadeVariants.length)];
+            ray.style.animationName = variant;
+            // лёгкая вариация высоты
+            ray.style.height = (140 + Math.random() * 100) + 'px';
             raysContainer.appendChild(ray);
         }
+        // Толстые светящиеся лучи: 4 шт
+        for (let i = 0; i < 4; i++) {
+            const rt = document.createElement('div'); rt.className = 'ray-thick';
+            rt.style.left = (Math.random() * 92 + 4) + '%';
+            rt.style.animationDuration = (Math.random() * 3 + 6.5).toFixed(2) + 's';
+            rt.style.animationDelay = (Math.random() * 7).toFixed(2) + 's';
+            rt.style.opacity = (Math.random() * 0.35 + 0.55).toFixed(2);
+            rt.style.height = (220 + Math.random() * 120) + 'px';
+            // часть гаснет посередине, часть долетает наверх — но никогда не в начале
+            if (Math.random() < 0.4) rt.style.animationName = 'rise-fade-late';
+            raysContainer.appendChild(rt);
+        }
+        // Несколько коротких ярких вспышек
         for (let i = 0; i < 3; i++) {
             const rayShort = document.createElement('div'); rayShort.className = 'ray-short';
-            rayShort.style.left = (Math.random() * 60 + 20) + '%'; 
+            rayShort.style.left = (Math.random() * 60 + 20) + '%';
             rayShort.style.animationDuration = (Math.random() * 1.5 + 3) + 's';
             rayShort.style.animationDelay = Math.random() * 3 + 's';
             raysContainer.appendChild(rayShort);
