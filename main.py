@@ -8,8 +8,8 @@ import re
 app = Flask(__name__)
 
 # --- КЛЮЧИ ---
-VT_API_KEY = 'VT_API_KEY'
-HF_TOKEN = 'HF_TOKEN'
+VT_API_KEY = os.getenv('VT_API_KEY')
+HF_TOKEN = os.getenv('HF_TOKEN')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')  # Read from Replit Secrets
 STATS_FILE = 'stats.txt'
 
