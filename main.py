@@ -176,10 +176,10 @@ HTML_LAYOUT = '''
         }
         .menu-overlay.active { opacity: 1; pointer-events: all; }
 
-        /* ДЕСКТОП (> 700px): постоянный рейл 62px, по клику расширяется */
+        /* ДЕСКТОП (> 700px): постоянный рейл 72px, по клику расширяется */
         .side-menu {
             position: fixed; top: 0; left: 0; height: 100%;
-            width: 62px;
+            width: 72px;
             background: var(--nav-bg); z-index: 9999;
             box-shadow: 4px 0 24px rgba(0,0,0,0.45);
             padding: 70px 8px 20px;
@@ -221,7 +221,7 @@ HTML_LAYOUT = '''
         .menu-item .menu-ico {
             font-size: 21px; line-height: 1;
             /* при свёрнутом меню — занимает всё место и центрируется */
-            flex: 0 0 62px; text-align: center; display: inline-block;
+            flex: 0 0 72px; text-align: center; display: inline-block;
             transition: flex-basis 0.5s var(--ultra-smooth);
         }
         .side-menu.active .menu-item .menu-ico { flex-basis: 46px; }
@@ -942,52 +942,104 @@ HTML_LAYOUT = '''
         .rep-desc { font-size: 12px; line-height: 1.5; opacity: 0.82; color: var(--text-main); }
         body.light-mode .rep-card { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
 
-        /* ВИДЕО СЕКЦИЯ */
+        /* ГЕРБЫ В HERO */
+        .hero-emblems {
+            display: flex; gap: 14px; align-items: center;
+            margin-bottom: 16px;
+        }
+        .hero-emblem {
+            width: 60px; height: 72px;
+            filter: drop-shadow(0 0 10px rgba(244,114,182,0.4));
+            transition: filter 0.3s, transform 0.3s;
+        }
+        .hero-emblem:hover { filter: drop-shadow(0 0 18px rgba(244,114,182,0.7)); transform: scale(1.06); }
+
+        /* АККОРДЕОН-БЛОКИ (видео/фото) */
+        .accord-box {
+            background: var(--card-bg);
+            border: 1.5px solid rgba(244,114,182,0.18);
+            border-radius: 18px; overflow: hidden;
+            transition: border-color 0.35s, box-shadow 0.35s;
+        }
+        .accord-box.open { border-color: rgba(244,114,182,0.5); box-shadow: 0 8px 30px rgba(244,114,182,0.12); }
+        body.light-mode .accord-box { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
+        .accord-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px; cursor: pointer; user-select: none;
+            transition: background 0.3s;
+        }
+        .accord-header:hover { background: rgba(244,114,182,0.06); }
+        .accord-title {
+            font-size: 15px; font-weight: 800; letter-spacing: 0.5px;
+            color: var(--text-main);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .accord-subtitle { font-size: 11px; opacity: 0.6; margin-top: 3px; font-weight: 500; letter-spacing: 0; display: block; }
+        .accord-chevron {
+            width: 28px; height: 28px; flex-shrink: 0;
+            border: 2px solid rgba(244,114,182,0.5);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--accent-berry); font-size: 14px; line-height: 1;
+            transition: transform 0.45s var(--ultra-smooth), background 0.3s, border-color 0.3s;
+        }
+        .accord-box.open .accord-chevron {
+            transform: rotate(180deg);
+            background: var(--accent-berry); color: #1E1B4B; border-color: var(--accent-berry);
+        }
+        .accord-content {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.65s var(--ultra-smooth);
+        }
+        .accord-box.open .accord-content { max-height: 1200px; }
+        .accord-inner { padding: 0 16px 18px; }
+
+        /* ВИДЕО ВНУТРИ АККОРДЕОНА */
         .vid-tabs {
             display: flex; gap: 10px; margin-bottom: 14px;
             flex-wrap: wrap;
         }
         .vid-tab {
-            flex: 1 1 120px;
-            background: var(--card-bg); border: 1.5px solid rgba(244,114,182,0.2);
+            flex: 1 1 110px;
+            background: rgba(0,0,0,0.25); border: 1.5px solid rgba(244,114,182,0.2);
             border-radius: 14px; padding: 14px 10px 12px;
             cursor: pointer; color: var(--text-main);
             display: flex; flex-direction: column; align-items: center; gap: 8px;
-            transition: background 0.3s, border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+            transition: background 0.3s, border-color 0.3s, transform 0.32s, box-shadow 0.32s;
             font-family: inherit;
         }
         .vid-tab-ico { font-size: 26px; }
-        .vid-tab-text { font-size: 12px; font-weight: 700; letter-spacing: 0.4px; text-align: center; line-height: 1.4; }
+        .vid-tab-text { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-align: center; line-height: 1.4; }
         .vid-tab:hover { border-color: var(--accent-berry); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(244,114,182,0.2); }
         .vid-tab.active { background: var(--btn-static); color: #1E1B4B; border-color: transparent; box-shadow: 0 6px 18px rgba(244,114,182,0.35); }
         .vid-tab.active .vid-tab-text { color: #1E1B4B; }
-        body.light-mode .vid-tab { background: #ffffff; box-shadow: 0 2px 8px rgba(30,27,75,0.06); }
+        body.light-mode .vid-tab { background: rgba(244,114,182,0.07); }
         .vid-player-wrap {
-            border-radius: 18px; overflow: hidden;
+            border-radius: 14px; overflow: hidden;
             border: 1.5px solid rgba(244,114,182,0.25);
             background: #000;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.55);
         }
-        .vid-player { width: 100%; display: block; max-height: 380px; object-fit: contain; }
+        .vid-player { width: 100%; display: block; max-height: 360px; object-fit: contain; }
 
-        /* ФОТО ГАЛЕРЕЯ */
+        /* ФОТО ГАЛЕРЕЯ ВНУТРИ АККОРДЕОНА */
         .photo-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
         }
-        @media (max-width: 520px) { .photo-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 480px) { .photo-grid { grid-template-columns: 1fr; } }
         .photo-card {
-            border-radius: 16px; overflow: hidden;
-            border: 1.5px solid rgba(244,114,182,0.2);
+            border-radius: 14px; overflow: hidden;
+            border: 1.5px solid rgba(244,114,182,0.18);
             background: var(--card-bg);
             cursor: pointer; position: relative;
             transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
         }
-        .photo-card:hover { transform: translateY(-5px) scale(1.02); border-color: var(--accent-berry); box-shadow: 0 12px 30px rgba(244,114,182,0.3); }
+        .photo-card:hover { transform: translateY(-5px) scale(1.02); border-color: var(--accent-berry); box-shadow: 0 12px 28px rgba(244,114,182,0.3); }
         .photo-card img { width: 100%; display: block; aspect-ratio: 3/4; object-fit: cover; }
-        @media (max-width: 520px) { .photo-card img { aspect-ratio: 4/3; } }
+        @media (max-width: 480px) { .photo-card img { aspect-ratio: 4/3; } }
         .photo-card-label {
             padding: 8px 10px; font-size: 11.5px; font-weight: 800;
-            letter-spacing: 0.5px; color: var(--text-main);
+            letter-spacing: 0.4px; color: var(--text-main);
             background: var(--card-bg); text-align: center;
         }
         body.light-mode .photo-card { background: #fff; box-shadow: 0 2px 10px rgba(30,27,75,0.07); }
@@ -995,7 +1047,7 @@ HTML_LAYOUT = '''
         /* МОДАЛЬНОЕ ОКНО ФОТО */
         .photo-modal {
             position: fixed; inset: 0; z-index: 20000;
-            background: rgba(10,10,30,0.92); backdrop-filter: blur(12px);
+            background: rgba(10,10,30,0.92); backdrop-filter: blur(14px);
             display: flex; align-items: center; justify-content: center;
             padding: 20px; box-sizing: border-box;
             opacity: 0; pointer-events: none;
@@ -1003,25 +1055,24 @@ HTML_LAYOUT = '''
         }
         .photo-modal.open { opacity: 1; pointer-events: all; }
         .photo-modal-inner {
-            position: relative; max-width: 90vw; max-height: 90vh;
+            position: relative; max-width: 92vw; max-height: 92vh;
             border-radius: 18px; overflow: hidden;
             box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-            transform: scale(0.92); transition: transform 0.35s var(--smooth);
+            transform: scale(0.9); transition: transform 0.38s var(--ultra-smooth);
         }
         .photo-modal.open .photo-modal-inner { transform: scale(1); }
-        .photo-modal img { width: 100%; max-height: 80vh; object-fit: contain; display: block; background: #000; }
+        .photo-modal img { width: 100%; max-height: 82vh; object-fit: contain; display: block; background: #000; }
         .photo-modal-close {
             position: absolute; top: 10px; right: 12px; z-index: 2;
-            background: rgba(0,0,0,0.6); border: none; border-radius: 50%;
+            background: rgba(0,0,0,0.65); border: none; border-radius: 50%;
             width: 36px; height: 36px; cursor: pointer; font-size: 16px;
             color: #fff; display: flex; align-items: center; justify-content: center;
-            transition: background 0.2s;
+            transition: background 0.22s;
         }
         .photo-modal-close:hover { background: var(--accent-berry); color: #1E1B4B; }
         .photo-modal-cap {
-            background: rgba(15,23,42,0.9); color: #fff;
-            padding: 10px 16px; font-size: 13px; font-weight: 700;
-            text-align: center;
+            background: rgba(15,23,42,0.92); color: #fff;
+            padding: 10px 16px; font-size: 13px; font-weight: 700; text-align: center;
         }
 
         /* СВЕТЛАЯ ТЕМА — ЧИТАЕМОСТЬ */
@@ -1182,6 +1233,10 @@ HTML_LAYOUT = '''
         <div id="page-home" class="page-content">
 
             <section class="home-hero">
+                <div class="hero-emblems">
+                    <img class="hero-emblem" src="/static/emblem_rb.svg" alt="Герб Республики Беларусь" title="Республика Беларусь">
+                    <img class="hero-emblem" src="/static/emblem_mvd.svg" alt="МВД Республики Беларусь" title="МВД Республики Беларусь">
+                </div>
                 <h1 class="home-hero-title">Защита, которая<br><span class="home-hero-accent">говорит на твоём языке</span></h1>
                 <p class="home-hero-sub">CyberShield — белорусский интеллектуальный щит. Проверка ссылок, разоблачение мошенников и тренировка реакции на цифровые угрозы — всё в одном месте, простым языком и без рекламы.</p>
                 <p class="home-hero-extra">Каждый день в сети появляются десятки новых поддельных сайтов, фейковых писем «от банка» и звонков «из службы безопасности». Мы помогаем понять, как они работают, и учим спокойно, без паники, отказывать злоумышленнику. Проект сделан для всех — школьников, родителей, пожилых людей и тех, кто впервые открыл интернет.</p>
@@ -1247,6 +1302,79 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
+            <!-- ===== ВИДЕО (аккордеон) ===== -->
+            <section class="home-section">
+                <div class="accord-box" id="accord-video">
+                    <div class="accord-header" onclick="toggleAccord('accord-video')">
+                        <div>
+                            <div class="accord-title">🎬 Видеоматериалы по кибербезопасности</div>
+                            <span class="accord-subtitle">Официальные обучающие ролики — Управление «К» МВД РБ</span>
+                        </div>
+                        <div class="accord-chevron">▼</div>
+                    </div>
+                    <div class="accord-content">
+                        <div class="accord-inner">
+                            <div class="vid-tabs" id="vid-tabs">
+                                <button class="vid-tab active" data-src="/static/video_bezopasnost.mp4" onclick="selectVideo(this)">
+                                    <span class="vid-tab-ico">🌐</span>
+                                    <span class="vid-tab-text">Безопасность<br>в интернете</span>
+                                </button>
+                                <button class="vid-tab" data-src="/static/video_soobscheniya.mp4" onclick="selectVideo(this)">
+                                    <span class="vid-tab-ico">📨</span>
+                                    <span class="vid-tab-text">Сообщения<br>от мошенников</span>
+                                </button>
+                                <button class="vid-tab" data-src="/static/video_vygryshi.mp4" onclick="selectVideo(this)">
+                                    <span class="vid-tab-ico">🎰</span>
+                                    <span class="vid-tab-text">Внезапные<br>выигрыши</span>
+                                </button>
+                            </div>
+                            <div class="vid-player-wrap">
+                                <video id="main-video" class="vid-player" controls preload="metadata" playsinline>
+                                    <source id="main-video-src" src="/static/video_bezopasnost.mp4" type="video/mp4">
+                                    Ваш браузер не поддерживает видео.
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== ФОТО (аккордеон) ===== -->
+            <section class="home-section">
+                <div class="accord-box" id="accord-photo">
+                    <div class="accord-header" onclick="toggleAccord('accord-photo')">
+                        <div>
+                            <div class="accord-title">🖼️ Информационные материалы</div>
+                            <span class="accord-subtitle">Официальные памятки от МВД и Управления «К» Республики Беларусь</span>
+                        </div>
+                        <div class="accord-chevron">▼</div>
+                    </div>
+                    <div class="accord-content">
+                        <div class="accord-inner">
+                            <div class="photo-grid">
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_apk.jpg','Вирусные APK-файлы — как защититься')">
+                                    <img src="/static/img_apk.jpg" alt="Вирусные APK-файлы" loading="lazy">
+                                    <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
+                                </div>
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_kids.jpg','Безопасный интернет для детей')">
+                                    <img src="/static/img_kids.jpg" alt="Безопасный интернет для детей" loading="lazy">
+                                    <div class="photo-card-label">👦 Безопасный интернет</div>
+                                </div>
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_hacker.png','Угрозы в сети — типичные схемы хакерских атак')">
+                                    <img src="/static/img_hacker.png" alt="Угрозы в сети" loading="lazy">
+                                    <div class="photo-card-label">🖥️ Угрозы в сети</div>
+                                </div>
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_konkurs.png','#КиберПраво: твой щит в сети — конкурс')">
+                                    <img src="/static/img_konkurs.png" alt="#КиберПраво конкурс" loading="lazy">
+                                    <div class="photo-card-label">🏆 #КиберПраво</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== НОВОСТИ ===== -->
             <section class="home-section">
                 <div class="home-section-head">
                     <h3>📰 Лента кибербезопасности</h3>
@@ -1336,54 +1464,6 @@ HTML_LAYOUT = '''
                                 <div class="news-tile-source">kgb.by</div>
                             </div>
                         </a>
-                    </div>
-                </div>
-            </section>
-
-            <section class="home-section">
-                <div class="home-section-head">
-                    <h3>🎬 Видеоматериалы по кибербезопасности</h3>
-                    <span>Официальные обучающие ролики — Управление «К» МВД РБ</span>
-                </div>
-                <div class="vid-tabs" id="vid-tabs">
-                    <button class="vid-tab active" data-src="/static/video_bezopasnost.mp4" onclick="selectVideo(this)">
-                        <span class="vid-tab-ico">🌐</span>
-                        <span class="vid-tab-text">Безопасность<br>в интернете</span>
-                    </button>
-                    <button class="vid-tab" data-src="/static/video_soobscheniya.mp4" onclick="selectVideo(this)">
-                        <span class="vid-tab-ico">📨</span>
-                        <span class="vid-tab-text">Сообщения<br>от мошенников</span>
-                    </button>
-                    <button class="vid-tab" data-src="/static/video_vygryshi.mp4" onclick="selectVideo(this)">
-                        <span class="vid-tab-ico">🎰</span>
-                        <span class="vid-tab-text">Внезапные<br>выигрыши</span>
-                    </button>
-                </div>
-                <div class="vid-player-wrap">
-                    <video id="main-video" class="vid-player" controls preload="metadata" playsinline>
-                        <source id="main-video-src" src="/static/video_bezopasnost.mp4" type="video/mp4">
-                        Ваш браузер не поддерживает видео.
-                    </video>
-                </div>
-            </section>
-
-            <section class="home-section">
-                <div class="home-section-head">
-                    <h3>🖼️ Информационные материалы</h3>
-                    <span>Официальные памятки от МВД и Управления «К» Республики Беларусь</span>
-                </div>
-                <div class="photo-grid">
-                    <div class="photo-card" onclick="openPhotoModal('/static/img_apk.jpg','Вирусные APK-файлы — как защититься')">
-                        <img src="/static/img_apk.jpg" alt="Вирусные APK-файлы" loading="lazy">
-                        <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
-                    </div>
-                    <div class="photo-card" onclick="openPhotoModal('/static/img_kids.jpg','Безопасный интернет для детей')">
-                        <img src="/static/img_kids.jpg" alt="Безопасный интернет для детей" loading="lazy">
-                        <div class="photo-card-label">👦 Безопасный интернет</div>
-                    </div>
-                    <div class="photo-card" onclick="openPhotoModal('/static/img_konkurs.png','#КиберПраво: твой щит в сети — конкурс')">
-                        <img src="/static/img_konkurs.png" alt="#КиберПраво конкурс" loading="lazy">
-                        <div class="photo-card-label">🏆 #КиберПраво</div>
                     </div>
                 </div>
             </section>
@@ -1727,7 +1807,13 @@ HTML_LAYOUT = '''
             btn.classList.toggle('open');
         }
 
-        // --- ВИДЕО СЕКЦИЯ ---
+        // --- АККОРДЕОН ---
+        function toggleAccord(id) {
+            const box = document.getElementById(id);
+            if (!box) return;
+            box.classList.toggle('open');
+        }
+
         function selectVideo(btn) {
             document.querySelectorAll('.vid-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
