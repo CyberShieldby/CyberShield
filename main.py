@@ -148,30 +148,26 @@ HTML_LAYOUT = '''
             100% { transform: translateY(-50vh); opacity: 0; }
         }
 
-        .container { max-width: 650px; margin: 0 auto; padding: 20px 20px 50px 20px; padding-top: 30px; padding-left: 80px; }
+        /* Десктоп: контент сдвинут правее чтобы не перекрывался рейлом */
+        .container { max-width: 650px; margin: 0 auto; padding: 30px 20px 50px 80px; }
 
-        /* --- ПОСТОЯННОЕ БОКОВОЕ МЕНЮ (рейл) --- */
+        /* --- БОКОВОЕ МЕНЮ --- */
         .hamburger-btn {
             position: fixed; top: 14px; left: 8px; z-index: 10001;
             width: 44px; height: 44px; border-radius: 50%;
             background: rgba(30, 27, 75, 0.9); border: 2px solid var(--accent-berry);
             display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
             cursor: pointer; box-shadow: 0 0 15px rgba(244, 114, 182, 0.3);
-            transition: all 0.45s var(--smooth); backdrop-filter: blur(5px);
+            transition: all 0.4s var(--smooth); backdrop-filter: blur(5px);
         }
-        .hamburger-btn:hover { transform: scale(1.06); box-shadow: 0 0 20px rgba(244, 114, 182, 0.6); }
+        .hamburger-btn:hover { transform: scale(1.06); box-shadow: 0 0 22px rgba(244, 114, 182, 0.65); }
         .hamburger-btn div { width: 22px; height: 2px; background: var(--accent-berry); transition: 0.4s var(--smooth); border-radius: 2px; }
-        body.light-mode .hamburger-btn {
-            background: linear-gradient(135deg, var(--accent-berry), #ec4899);
-            border-color: #ffffff;
-            box-shadow: 0 0 15px rgba(244, 114, 182, 0.55);
-        }
+        body.light-mode .hamburger-btn { background: linear-gradient(135deg, var(--accent-berry), #ec4899); border-color: #fff; box-shadow: 0 0 15px rgba(244,114,182,0.55); }
         body.light-mode .hamburger-btn div { background: #ffffff; }
         .hamburger-btn.open div:nth-child(1) { transform: translate(-7px, 7px) rotate(90deg); }
         .hamburger-btn.open div:nth-child(2) { opacity: 1; transform: rotate(90deg); }
         .hamburger-btn.open div:nth-child(3) { transform: translate(7px, -7px) rotate(90deg); }
 
-        /* лёгкая тень при раскрытии — БЕЗ blur, только мягкий dim */
         .menu-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.35);
@@ -180,38 +176,65 @@ HTML_LAYOUT = '''
         }
         .menu-overlay.active { opacity: 1; pointer-events: all; }
 
+        /* ДЕСКТОП (> 700px): постоянный рейл 62px, по клику расширяется */
         .side-menu {
-            position: fixed; top: 0; left: 0; width: 60px; height: 100%;
+            position: fixed; top: 0; left: 0; height: 100%;
+            width: 62px;
             background: var(--nav-bg); z-index: 9999;
-            box-shadow: 4px 0 22px rgba(0,0,0,0.45);
-            padding: 70px 8px 20px; display: flex; flex-direction: column; gap: 10px;
-            transition: width 0.55s var(--ultra-smooth);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.45);
+            padding: 70px 8px 20px;
+            display: flex; flex-direction: column; gap: 10px;
+            transition: width 0.5s var(--ultra-smooth);
             border-right: 1px solid rgba(244, 114, 182, 0.3);
             box-sizing: border-box; overflow: hidden;
         }
-        .side-menu.active { width: 260px; padding: 70px 14px 20px; }
+        .side-menu.active { width: 262px; padding: 70px 14px 20px; }
 
+        /* Гербы — только в раскрытом меню */
+        .menu-emblems {
+            display: flex; justify-content: center; align-items: center; gap: 14px;
+            height: 0; overflow: hidden; opacity: 0;
+            transition: height 0.4s var(--smooth), opacity 0.4s var(--smooth);
+            margin-bottom: 0;
+        }
+        .side-menu.active .menu-emblems {
+            height: 58px; opacity: 1; margin-bottom: 10px;
+            transition-delay: 0.05s;
+        }
+        .menu-emblem-img { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(244,114,182,0.35)); }
+
+        /* Пункты меню */
         .menu-item {
-            padding: 14px 12px; background: rgba(0,0,0,0.3); border-radius: 14px;
-            font-weight: 800; font-size: 14px; cursor: pointer; border: 1px solid rgba(244, 114, 182, 0.12);
-            transition: background 0.35s var(--smooth), color 0.35s var(--smooth),
-                        border-color 0.35s var(--smooth), box-shadow 0.35s var(--smooth),
-                        transform 0.35s var(--smooth);
-            color: var(--text-main); letter-spacing: 1px;
-            display: flex; align-items: center; gap: 12px; white-space: nowrap; overflow: hidden;
+            padding: 12px 0; background: rgba(0,0,0,0.3); border-radius: 13px;
+            font-weight: 800; font-size: 13.5px; cursor: pointer;
+            border: 1px solid rgba(244, 114, 182, 0.12);
+            transition: background 0.32s var(--smooth), color 0.32s var(--smooth),
+                        border-color 0.32s, box-shadow 0.32s, transform 0.32s;
+            color: var(--text-main); letter-spacing: 0.8px;
+            display: flex; align-items: center;
+            white-space: nowrap; overflow: hidden;
+            /* центрируем иконку когда свёрнуто */
+            justify-content: flex-start;
+            padding-left: 0;
         }
-        body.light-mode .menu-item { background: rgba(244, 114, 182, 0.10); }
-        .menu-item .menu-ico { font-size: 20px; line-height: 1; flex: 0 0 22px; text-align: center; display: inline-block; }
+        body.light-mode .menu-item { background: rgba(244, 114, 182, 0.1); }
+        .menu-item .menu-ico {
+            font-size: 21px; line-height: 1;
+            /* при свёрнутом меню — занимает всё место и центрируется */
+            flex: 0 0 62px; text-align: center; display: inline-block;
+            transition: flex-basis 0.5s var(--ultra-smooth);
+        }
+        .side-menu.active .menu-item .menu-ico { flex-basis: 46px; }
         .menu-item .menu-label {
-            opacity: 0; transform: translateX(-6px);
-            transition: opacity 0.35s var(--smooth), transform 0.45s var(--smooth);
-            display: inline-block;
+            opacity: 0; transform: translateX(-8px);
+            transition: opacity 0.32s var(--smooth), transform 0.4s var(--smooth);
+            display: inline-block; padding-right: 12px;
         }
-        .side-menu.active .menu-item .menu-label { opacity: 1; transform: translateX(0); transition-delay: 0.1s; }
+        .side-menu.active .menu-item .menu-label { opacity: 1; transform: translateX(0); transition-delay: 0.08s; }
         .menu-item:hover, .menu-item.active {
             background: var(--btn-static); color: #1E1B4B;
-            border-color: transparent; box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
-            transform: scale(1.03);
+            border-color: transparent; box-shadow: 0 0 14px rgba(244, 114, 182, 0.42);
+            transform: scale(1.02);
         }
 
         .tg-menu-btn {
@@ -221,15 +244,17 @@ HTML_LAYOUT = '''
             display: flex; justify-content: center; width: 100%; box-sizing: border-box;
             pointer-events: none;
         }
-        .side-menu.active .tg-menu-btn { opacity: 1; transform: translateY(0); pointer-events: auto; transition-delay: 0.18s; }
+        .side-menu.active .tg-menu-btn { opacity: 1; transform: translateY(0); pointer-events: auto; transition-delay: 0.14s; }
         .side-menu hr { opacity: 0; transition: opacity 0.4s var(--smooth); }
         .side-menu.active hr { opacity: 1; }
 
-        @media (max-width: 720px) {
-            .container { padding-left: 70px; }
-            .side-menu { width: 54px; padding: 70px 6px 20px; }
-            .side-menu.active { width: 240px; padding: 70px 12px 20px; }
-            .hamburger-btn { left: 6px; }
+        /* МОБИЛЬНЫЙ (≤ 700px): рейл скрыт полностью, только гамбургер */
+        @media (max-width: 700px) {
+            .container { padding-left: 20px; padding-top: 70px; }
+            .hamburger-btn { left: 12px; top: 14px; }
+            .side-menu { width: 0; padding: 70px 0 20px; border-right: none; }
+            .side-menu.active { width: 260px; padding: 70px 12px 20px; border-right: 1px solid rgba(244,114,182,0.3); }
+            .menu-overlay.active { background: rgba(10,15,40,0.6); }
         }
 
         .tg-super-btn {
@@ -917,6 +942,88 @@ HTML_LAYOUT = '''
         .rep-desc { font-size: 12px; line-height: 1.5; opacity: 0.82; color: var(--text-main); }
         body.light-mode .rep-card { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
 
+        /* ВИДЕО СЕКЦИЯ */
+        .vid-tabs {
+            display: flex; gap: 10px; margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .vid-tab {
+            flex: 1 1 120px;
+            background: var(--card-bg); border: 1.5px solid rgba(244,114,182,0.2);
+            border-radius: 14px; padding: 14px 10px 12px;
+            cursor: pointer; color: var(--text-main);
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            transition: background 0.3s, border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+            font-family: inherit;
+        }
+        .vid-tab-ico { font-size: 26px; }
+        .vid-tab-text { font-size: 12px; font-weight: 700; letter-spacing: 0.4px; text-align: center; line-height: 1.4; }
+        .vid-tab:hover { border-color: var(--accent-berry); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(244,114,182,0.2); }
+        .vid-tab.active { background: var(--btn-static); color: #1E1B4B; border-color: transparent; box-shadow: 0 6px 18px rgba(244,114,182,0.35); }
+        .vid-tab.active .vid-tab-text { color: #1E1B4B; }
+        body.light-mode .vid-tab { background: #ffffff; box-shadow: 0 2px 8px rgba(30,27,75,0.06); }
+        .vid-player-wrap {
+            border-radius: 18px; overflow: hidden;
+            border: 1.5px solid rgba(244,114,182,0.25);
+            background: #000;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .vid-player { width: 100%; display: block; max-height: 380px; object-fit: contain; }
+
+        /* ФОТО ГАЛЕРЕЯ */
+        .photo-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+        }
+        @media (max-width: 520px) { .photo-grid { grid-template-columns: 1fr; } }
+        .photo-card {
+            border-radius: 16px; overflow: hidden;
+            border: 1.5px solid rgba(244,114,182,0.2);
+            background: var(--card-bg);
+            cursor: pointer; position: relative;
+            transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
+        }
+        .photo-card:hover { transform: translateY(-5px) scale(1.02); border-color: var(--accent-berry); box-shadow: 0 12px 30px rgba(244,114,182,0.3); }
+        .photo-card img { width: 100%; display: block; aspect-ratio: 3/4; object-fit: cover; }
+        @media (max-width: 520px) { .photo-card img { aspect-ratio: 4/3; } }
+        .photo-card-label {
+            padding: 8px 10px; font-size: 11.5px; font-weight: 800;
+            letter-spacing: 0.5px; color: var(--text-main);
+            background: var(--card-bg); text-align: center;
+        }
+        body.light-mode .photo-card { background: #fff; box-shadow: 0 2px 10px rgba(30,27,75,0.07); }
+
+        /* МОДАЛЬНОЕ ОКНО ФОТО */
+        .photo-modal {
+            position: fixed; inset: 0; z-index: 20000;
+            background: rgba(10,10,30,0.92); backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; box-sizing: border-box;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.35s var(--smooth);
+        }
+        .photo-modal.open { opacity: 1; pointer-events: all; }
+        .photo-modal-inner {
+            position: relative; max-width: 90vw; max-height: 90vh;
+            border-radius: 18px; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            transform: scale(0.92); transition: transform 0.35s var(--smooth);
+        }
+        .photo-modal.open .photo-modal-inner { transform: scale(1); }
+        .photo-modal img { width: 100%; max-height: 80vh; object-fit: contain; display: block; background: #000; }
+        .photo-modal-close {
+            position: absolute; top: 10px; right: 12px; z-index: 2;
+            background: rgba(0,0,0,0.6); border: none; border-radius: 50%;
+            width: 36px; height: 36px; cursor: pointer; font-size: 16px;
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .photo-modal-close:hover { background: var(--accent-berry); color: #1E1B4B; }
+        .photo-modal-cap {
+            background: rgba(15,23,42,0.9); color: #fff;
+            padding: 10px 16px; font-size: 13px; font-weight: 700;
+            text-align: center;
+        }
+
         /* СВЕТЛАЯ ТЕМА — ЧИТАЕМОСТЬ */
         body.light-mode { color: #1E1B4B; }
         body.light-mode .home-hero-sub,
@@ -1042,6 +1149,13 @@ HTML_LAYOUT = '''
     </div>
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
     <div class="side-menu" id="side-menu">
+
+        <!-- Гербы РБ и МВД — показываются только при раскрытии -->
+        <div class="menu-emblems">
+            <img class="menu-emblem-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Coat_of_Arms_of_Belarus.svg/48px-Coat_of_Arms_of_Belarus.svg.png" alt="Герб РБ" title="Герб Республики Беларусь">
+            <img class="menu-emblem-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg/48px-Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg.png" alt="МВД РБ" title="МВД Республики Беларусь">
+        </div>
+
         <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home')">
             <span class="menu-ico">🏠</span><span class="menu-label">ГЛАВНАЯ</span>
         </a>
@@ -1129,59 +1243,6 @@ HTML_LAYOUT = '''
                         <li>Понятный язык — без сложной терминологии.</li>
                         <li>Тренировки построены на реальных белорусских кейсах.</li>
                         <li>Подходит для уроков ОБЖ, классных часов и семейных бесед.</li>
-                    </ul>
-                </div>
-            </section>
-
-            <section class="home-section">
-                <div class="home-section-head">
-                    <h3>🇧🇾 Республика Беларусь и кибербезопасность</h3>
-                    <span>Что важно знать каждому жителю страны</span>
-                </div>
-
-                <div class="home-republic">
-                    <div class="rep-card">
-                        <div class="rep-num">152-З</div>
-                        <div class="rep-title">Закон «О защите персональных данных»</div>
-                        <div class="rep-desc">Регулирует обработку и хранение ваших данных. Любая компания обязана получать согласие на их сбор, а вы имеете право в любой момент его отозвать.</div>
-                    </div>
-                    <div class="rep-card">
-                        <div class="rep-num">УК §349</div>
-                        <div class="rep-title">Уголовная ответственность за киберпреступления</div>
-                        <div class="rep-desc">Статьи 349–355 Уголовного кодекса РБ предусматривают наказание за несанкционированный доступ, хищение данных, фишинг и вредоносное ПО.</div>
-                    </div>
-                    <div class="rep-card">
-                        <div class="rep-num">102</div>
-                        <div class="rep-title">Единый телефон милиции</div>
-                        <div class="rep-desc">Если вы стали жертвой мошенников — звоните 102 круглосуточно. Управление «К» расследует преступления в сфере высоких технологий.</div>
-                    </div>
-                    <div class="rep-card">
-                        <div class="rep-num">CERT.BY</div>
-                        <div class="rep-title">Государственный центр реагирования</div>
-                        <div class="rep-desc">CERT при ОАЦ принимает обращения о киберинцидентах и предупреждает население о новых атаках на белорусские сервисы.</div>
-                    </div>
-                </div>
-
-                <div class="home-info-block" style="margin-top:18px;">
-                    <h4 class="shimmer-text">📞 Если вас уже обманули</h4>
-                    <ol style="padding-left:20px; font-size:13px; line-height:1.7; opacity:0.88; margin:8px 0 0;">
-                        <li>Немедленно позвоните в банк по номеру с обратной стороны карты и заблокируйте её.</li>
-                        <li>Сохраните переписку, скриншоты, номера телефонов и ссылки — это доказательства.</li>
-                        <li>Подайте заявление в ближайшее РУВД или по телефону <b>102</b>.</li>
-                        <li>Сообщите об инциденте в ОАЦ через форму на <b>oac.gov.by</b>.</li>
-                        <li>Поменяйте пароли на всех сервисах, где могли «засветиться» данные.</li>
-                    </ol>
-                </div>
-
-                <div class="home-info-block" style="margin-top:18px;">
-                    <h4 class="shimmer-text">🧠 5 правил цифровой гигиены</h4>
-                    <p style="margin-bottom:10px;">Эти простые привычки уже спасли тысячи белорусов от потери денег и личных данных. Освойте их сами и научите близких — особенно пожилых родственников.</p>
-                    <ul>
-                        <li><b>Не торопиться.</b> Любое срочное «решение прямо сейчас» — красный флаг мошенника.</li>
-                        <li><b>Перезванивать.</b> Если звонят «из банка» — кладите трубку и набирайте номер на карте.</li>
-                        <li><b>Не вводить коды.</b> Ни одна служба не имеет права просить код из СМС или CVC.</li>
-                        <li><b>Проверять адрес сайта.</b> Одна лишняя буква — и вы на поддельной странице.</li>
-                        <li><b>Включить двухфакторную защиту.</b> Это лучшая страховка ваших аккаунтов.</li>
                     </ul>
                 </div>
             </section>
@@ -1278,6 +1339,63 @@ HTML_LAYOUT = '''
                     </div>
                 </div>
             </section>
+
+            <section class="home-section">
+                <div class="home-section-head">
+                    <h3>🎬 Видеоматериалы по кибербезопасности</h3>
+                    <span>Официальные обучающие ролики — Управление «К» МВД РБ</span>
+                </div>
+                <div class="vid-tabs" id="vid-tabs">
+                    <button class="vid-tab active" data-src="/static/video_bezopasnost.mp4" onclick="selectVideo(this)">
+                        <span class="vid-tab-ico">🌐</span>
+                        <span class="vid-tab-text">Безопасность<br>в интернете</span>
+                    </button>
+                    <button class="vid-tab" data-src="/static/video_soobscheniya.mp4" onclick="selectVideo(this)">
+                        <span class="vid-tab-ico">📨</span>
+                        <span class="vid-tab-text">Сообщения<br>от мошенников</span>
+                    </button>
+                    <button class="vid-tab" data-src="/static/video_vygryshi.mp4" onclick="selectVideo(this)">
+                        <span class="vid-tab-ico">🎰</span>
+                        <span class="vid-tab-text">Внезапные<br>выигрыши</span>
+                    </button>
+                </div>
+                <div class="vid-player-wrap">
+                    <video id="main-video" class="vid-player" controls preload="metadata" playsinline>
+                        <source id="main-video-src" src="/static/video_bezopasnost.mp4" type="video/mp4">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
+            </section>
+
+            <section class="home-section">
+                <div class="home-section-head">
+                    <h3>🖼️ Информационные материалы</h3>
+                    <span>Официальные памятки от МВД и Управления «К» Республики Беларусь</span>
+                </div>
+                <div class="photo-grid">
+                    <div class="photo-card" onclick="openPhotoModal('/static/img_apk.jpg','Вирусные APK-файлы — как защититься')">
+                        <img src="/static/img_apk.jpg" alt="Вирусные APK-файлы" loading="lazy">
+                        <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
+                    </div>
+                    <div class="photo-card" onclick="openPhotoModal('/static/img_kids.jpg','Безопасный интернет для детей')">
+                        <img src="/static/img_kids.jpg" alt="Безопасный интернет для детей" loading="lazy">
+                        <div class="photo-card-label">👦 Безопасный интернет</div>
+                    </div>
+                    <div class="photo-card" onclick="openPhotoModal('/static/img_konkurs.png','#КиберПраво: твой щит в сети — конкурс')">
+                        <img src="/static/img_konkurs.png" alt="#КиберПраво конкурс" loading="lazy">
+                        <div class="photo-card-label">🏆 #КиберПраво</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Модальное окно для просмотра фото -->
+            <div id="photo-modal" class="photo-modal" onclick="closePhotoModal()">
+                <div class="photo-modal-inner" onclick="event.stopPropagation()">
+                    <button class="photo-modal-close" onclick="closePhotoModal()">✕</button>
+                    <img id="photo-modal-img" src="" alt="">
+                    <div id="photo-modal-cap" class="photo-modal-cap"></div>
+                </div>
+            </div>
 
         </div>
 
@@ -1608,6 +1726,32 @@ HTML_LAYOUT = '''
             overlay.classList.toggle('active');
             btn.classList.toggle('open');
         }
+
+        // --- ВИДЕО СЕКЦИЯ ---
+        function selectVideo(btn) {
+            document.querySelectorAll('.vid-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const src = btn.getAttribute('data-src');
+            const video = document.getElementById('main-video');
+            video.pause();
+            document.getElementById('main-video-src').src = src;
+            video.load();
+            video.play().catch(() => {});
+        }
+
+        // --- ФОТО ГАЛЕРЕЯ МОДАЛЬНОЕ ОКНО ---
+        function openPhotoModal(src, caption) {
+            const modal = document.getElementById('photo-modal');
+            document.getElementById('photo-modal-img').src = src;
+            document.getElementById('photo-modal-cap').textContent = caption;
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closePhotoModal() {
+            document.getElementById('photo-modal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePhotoModal(); });
 
         // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ СТРАНИЦ ---
         function switchPage(pageId) {
