@@ -11,18 +11,7 @@ app = Flask(__name__)
 VT_API_KEY = os.getenv('VT_API_KEY')
 HF_TOKEN = os.getenv('HF_TOKEN')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-CLOUDINARY_CLOUD = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
 STATS_FILE = 'stats.txt'
-
-def cld_img(public_id, ext='jpg'):
-    if CLOUDINARY_CLOUD:
-        return f"https://res.cloudinary.com/{CLOUDINARY_CLOUD}/image/upload/{public_id}.{ext}"
-    return f"/static/{public_id}.{ext}"
-
-def cld_vid(public_id):
-    if CLOUDINARY_CLOUD:
-        return f"https://res.cloudinary.com/{CLOUDINARY_CLOUD}/video/upload/{public_id}.mp4"
-    return f"/static/{public_id}.mp4"
 
 def get_real_stats():
     if not os.path.exists(STATS_FILE):
@@ -108,6 +97,7 @@ HTML_LAYOUT = '''
             animation: rise linear infinite; opacity: 0; bottom: -200px;
             will-change: transform, opacity;
         }
+        /* луч НИКОГДА не гаснет в начале — всегда долетает минимум до середины */
         @keyframes rise { 
             0% { transform: translateY(0); opacity: 0; } 
             12% { opacity: 0.55; } 
@@ -158,8 +148,8 @@ HTML_LAYOUT = '''
             100% { transform: translateY(-50vh); opacity: 0; }
         }
 
-        /* Десктоп: контент сдвинут правее */
-        .container { max-width: 650px; margin: 0 auto; padding: 30px 20px 50px 74px; }
+        /* Десктоп: контент сдвинут правее чтобы не перекрывался рейлом */
+        .container { max-width: 650px; margin: 0 auto; padding: 30px 20px 50px 80px; }
 
         /* --- БОКОВОЕ МЕНЮ --- */
         .hamburger-btn {
@@ -186,10 +176,10 @@ HTML_LAYOUT = '''
         }
         .menu-overlay.active { opacity: 1; pointer-events: all; }
 
-        /* ДЕСКТОП (> 700px): постоянный рейл 66px */
+        /* ДЕСКТОП (> 700px): постоянный рейл 72px, по клику расширяется */
         .side-menu {
             position: fixed; top: 0; left: 0; height: 100%;
-            width: 66px;
+            width: 72px;
             background: var(--nav-bg); z-index: 9999;
             box-shadow: 4px 0 24px rgba(0,0,0,0.45);
             padding: 70px 8px 20px;
@@ -223,13 +213,15 @@ HTML_LAYOUT = '''
             color: var(--text-main); letter-spacing: 0.8px;
             display: flex; align-items: center;
             white-space: nowrap; overflow: hidden;
+            /* центрируем иконку когда свёрнуто */
             justify-content: flex-start;
             padding-left: 0;
         }
         body.light-mode .menu-item { background: rgba(244, 114, 182, 0.1); }
         .menu-item .menu-ico {
             font-size: 21px; line-height: 1;
-            flex: 0 0 66px; text-align: center; display: inline-block;
+            /* при свёрнутом меню — занимает всё место и центрируется */
+            flex: 0 0 72px; text-align: center; display: inline-block;
             transition: flex-basis 0.5s var(--ultra-smooth);
         }
         .side-menu.active .menu-item .menu-ico { flex-basis: 46px; }
@@ -473,117 +465,540 @@ HTML_LAYOUT = '''
 
         #quiz-area { position: relative; width: 100%; min-height: 160px; overflow: hidden; perspective: 1000px; }
 
-        .quiz-option {
-            padding: 15px; border-radius: 15px; margin-bottom: 10px; cursor: pointer;
-            background: rgba(0,0,0,0.2); border: 1px solid rgba(244, 114, 182, 0.2);
-            transition: all 0.3s var(--smooth); font-size: 14px;
+        .quiz-option { 
+            display: block; width: 100%; padding: 14px 18px; margin: 10px 0; background: rgba(0,0,0,0.1); 
+            border: 1px solid rgba(244, 114, 182, 0.2); border-radius: 14px; color: var(--text-main); 
+            cursor: pointer; text-align: left; transition: all 0.4s var(--smooth); 
+            font-size: 14px; box-sizing: border-box;
         }
-        .quiz-option:hover { border-color: var(--accent-berry); background: rgba(244, 114, 182, 0.1); }
-        .quiz-option.correct { background: rgba(74, 222, 128, 0.2); border-color: var(--safe-green); color: var(--safe-green); }
-        .quiz-option.wrong { background: rgba(248, 113, 113, 0.2); border-color: var(--danger-red); color: var(--danger-red); }
-        .hidden { display: none !important; }
-        .slide-left-to-right { animation: slideIn 0.4s var(--smooth); }
-        @keyframes slideIn { from { transform: translateX(-60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .quiz-option:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); transform: translateX(6px); }
+        .quiz-option.correct { background: rgba(74, 222, 128, 0.2) !important; border-color: var(--safe-green) !important; color: var(--safe-green); }
+        .quiz-option.wrong { background: rgba(248, 113, 113, 0.2) !important; border-color: var(--danger-red) !important; color: var(--danger-red); }
 
-        /* --- HOME PAGE --- */
-        .home-hero {
-            text-align: center; padding: 35px 10px 30px;
-            animation: ultraEntrance 0.9s var(--ultra-smooth) backwards;
+        .slide-left-to-right { 
+            animation: smoothLTR 1.2s var(--ultra-smooth) forwards;
+            will-change: transform, opacity;
         }
+        @keyframes smoothLTR {
+            0% { opacity: 0; transform: translateX(-100px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        .master-footer {
+            position: relative; margin-top: 50px; width: 100%; height: 180px;
+            background: linear-gradient(to top, var(--nav-bg), transparent);
+            z-index: 999; pointer-events: none;
+        }
+
+        .footer-line {
+            position: absolute; bottom: 100px; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-berry), var(--accent-frost), transparent);
+            box-shadow: 0 0 15px var(--accent-berry);
+            z-index: 1001;
+        }
+
+        .footer-rays {
+            position: absolute; bottom: 102px; left: 0; width: 100%; height: 150px;
+            overflow: hidden; pointer-events: none;
+        }
+        .footer-ray {
+            position: absolute; bottom: 0; width: 2px; height: 100%;
+            background: linear-gradient(to top, var(--accent-berry), transparent);
+            opacity: 0.4; animation: beamUp 2s infinite ease-out;
+        }
+        @keyframes beamUp { 0% { height: 0; opacity: 0.8; } 100% { height: 100%; opacity: 0; } }
+
+        .bottom-nav-zone { 
+            position: relative; width: 100%; 
+            background: var(--nav-bg); padding: 40px 0 60px;
+            display: flex; flex-direction: column; align-items: center; gap: 30px;
+            border-top: 1px solid rgba(244, 114, 182, 0.2);
+            z-index: 1002;
+        }
+
+        .nav-island {
+            background: rgba(0,0,0,0.4); padding: 10px 30px; border-radius: 60px;
+            border: 2px solid rgba(244, 114, 182, 0.4);
+            display: flex; gap: 30px; align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .nav-link { 
+            text-decoration: none; font-size: 14px; font-weight: 900; 
+            cursor: pointer; text-align: center; transition: all 0.3s var(--smooth);
+        }
+        .nav-link:hover, .nav-link:active {
+            transform: translateY(-4px);
+            color: var(--accent-frost);
+            text-shadow: 0 0 12px var(--accent-frost);
+        }
+        
+        .system-footer { margin-top: 10px; text-align: center; font-size: 13px; }
+        .hidden { display: none !important; }
+        
+        .cyber-link { 
+            text-decoration: none; display: inline-block; margin-top: 0px; 
+            transition: all 0.3s var(--smooth); 
+        }
+        .cyber-link:hover, .cyber-link:active { 
+            transform: translateY(-5px) scale(1.05); 
+            text-shadow: 0 0 15px var(--accent-berry);
+        }
+
+        .voice-btn {
+            background: transparent; border: 1px solid var(--accent-berry); color: var(--accent-berry);
+            border-radius: 50%; width: 35px; height: 35px; cursor: pointer; float: right;
+            display: flex; align-items: center; justify-content: center; margin-top: -5px; flex-shrink: 0;
+        }
+        .voice-btn.playing { animation: pulse-voice 1.5s infinite; }
+        @keyframes pulse-voice { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* --- СТИЛИ ЧАТА СИМУЛЯЦИИ --- */
+        .sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; align-items: stretch; }
+        .sim-card { 
+            background: rgba(0,0,0,0.2); border: 1px solid rgba(244, 114, 182, 0.2); 
+            border-radius: 15px; padding: 15px 10px; text-align: center; cursor: pointer;
+            transition: all 0.3s var(--smooth);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100px; box-sizing: border-box;
+        }
+        .sim-card:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); transform: translateY(-5px); }
+        .sim-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+        .sim-card.locked:hover { transform: none; background: rgba(0,0,0,0.2); border-color: rgba(244, 114, 182, 0.2); }
+        
+        .chat-container { 
+            background: rgba(15, 23, 42, 0.8); border-radius: 20px; border: 1px solid rgba(244, 114, 182, 0.3);
+            display: flex; flex-direction: column; height: 400px; overflow: hidden;
+            animation: ultraEntrance 0.6s var(--ultra-smooth);
+        }
+        .chat-header { background: rgba(0,0,0,0.4); padding: 15px; text-align: center; border-bottom: 1px solid rgba(244, 114, 182, 0.2); font-weight: bold; font-size: 14px;}
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-messages::-webkit-scrollbar { display: none; }
+        .msg { padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 13px; line-height: 1.4; animation: slideFromLeft 0.3s var(--smooth); }
+        .msg.bot { background: rgba(244, 114, 182, 0.15); border-bottom-left-radius: 2px; border: 1px solid rgba(244, 114, 182, 0.3); align-self: flex-start; color: var(--text-main); }
+        .msg.user { background: var(--btn-static); color: #1E1B4B; border-bottom-right-radius: 2px; align-self: flex-end; animation: slideFromRight 0.3s var(--smooth); font-weight: bold;}
+        .chat-input-area { display: flex; padding: 10px; background: rgba(0,0,0,0.4); gap: 10px; }
+        .chat-input-area input { flex: 1; background: rgba(255,255,255,0.1); border: none; border-radius: 20px; padding: 10px 15px; color: white; outline: none; font-size: 13px; }
+        .chat-send-btn { background: var(--btn-static); color: #1E1B4B; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
+
+        @keyframes slideFromLeft { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideFromRight { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* --- ПАРОЛЬНЫЙ СТРАЖ --- */
+        .pw-rule { transition: all 0.45s var(--smooth); opacity: 0.55; }
+        .pw-rule .detail-indicator { background: rgba(203, 213, 225, 0.35); box-shadow: none; transition: all 0.45s var(--smooth); }
+        .pw-rule .detail-label { color: var(--text-main); transition: color 0.45s var(--smooth); letter-spacing: 0.5px; }
+        .pw-rule.active { opacity: 1; transform: translateX(2px); }
+        .pw-rule.active .detail-indicator {
+            background: var(--safe-green);
+            box-shadow: 0 0 12px var(--safe-green), 0 0 22px rgba(74, 222, 128, 0.4);
+            animation: pwPulse 1.6s ease-in-out infinite;
+        }
+        .pw-rule.active .detail-label {
+            color: var(--safe-green);
+            text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+        }
+        @keyframes pwPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+
+        /* --- ПИНГ-ИНДИКАТОР (перенесён в нижнюю зону, не пересекается с #КИБЕРПРАВО) --- */
+        .ping-indicator {
+            position: absolute; top: 14px; right: 16px;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 10px; border-radius: 12px;
+            background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(74, 222, 128, 0.3);
+            font-family: monospace; font-size: 10px; letter-spacing: 1px;
+            color: var(--safe-green); transition: all 0.4s var(--smooth);
+            backdrop-filter: blur(6px); z-index: 1003;
+        }
+        body.light-mode .ping-indicator { background: rgba(255,255,255,0.85); border-color: rgba(34,197,94,0.4); }
+        .ping-indicator .ping-label { opacity: 0.65; font-weight: bold; }
+        .ping-indicator #ping-value { font-weight: bold; }
+        .ping-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--safe-green);
+            box-shadow: 0 0 8px var(--safe-green);
+            animation: pingPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes pingPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.6; } }
+        .ping-indicator.warn { border-color: rgba(251, 191, 36, 0.4); color: #fbbf24; }
+        .ping-indicator.warn .ping-dot { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
+        .ping-indicator.bad { border-color: rgba(239, 68, 68, 0.4); color: var(--danger-red); }
+        .ping-indicator.bad .ping-dot { background: var(--danger-red); box-shadow: 0 0 8px var(--danger-red); }
+
+        /* ============================================
+           ГЛАВНАЯ СТРАНИЦА — ПРОФЕССИОНАЛЬНЫЙ ДИЗАЙН
+           ============================================ */
+
+        /* HERO */
+        .home-hero {
+            padding: 40px 8px 28px;
+            text-align: center;
+            position: relative;
+            animation: ultraEntrance 0.8s var(--ultra-smooth) both;
+        }
+        .home-hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px;
+            padding: 7px 14px; border-radius: 999px;
+            background: rgba(74, 222, 128, 0.08);
+            border: 1px solid rgba(74, 222, 128, 0.35);
+            color: var(--safe-green);
+            margin-bottom: 22px;
+        }
+        .hero-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--safe-green);
+            box-shadow: 0 0 10px var(--safe-green);
+            animation: heroPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes heroPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.4); }
+        }
+        .home-hero-title {
+            font-size: clamp(28px, 5vw, 42px);
+            line-height: 1.1;
+            font-weight: 800;
+            margin: 0 0 18px;
+            letter-spacing: -0.8px;
+            color: var(--text-main);
+        }
+        .home-hero-accent {
+            background: linear-gradient(135deg, var(--accent-berry), var(--accent-frost));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .home-hero-sub {
+            font-size: 14px; line-height: 1.6;
+            max-width: 480px; margin: 0 auto 18px;
+            opacity: 0.82;
+        }
+        .home-hero-extra {
+            font-size: 13px; line-height: 1.7;
+            max-width: 520px; margin: 0 auto 26px;
+            opacity: 0.72;
+        }
+        .home-hero-cta {
+            display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+        }
+        .hero-btn {
+            padding: 13px 26px;
+            border-radius: 12px;
+            font-size: 13px; font-weight: 700; letter-spacing: 0.6px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.35s var(--smooth);
+            display: inline-block;
+        }
+        .hero-btn.primary {
+            background: linear-gradient(135deg, var(--accent-berry), #ec4899);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(244, 114, 182, 0.35);
+        }
+        .hero-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(244, 114, 182, 0.5); }
+        .hero-btn.ghost {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid rgba(244, 114, 182, 0.4);
+        }
+        .hero-btn.ghost:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); }
+
+        /* СТАТИСТИКА */
+        .home-stats {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 10px; margin: 8px 0 32px;
+        }
+        .home-stat {
+            padding: 18px 8px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.06), rgba(129, 140, 248, 0.05));
+            border: 1px solid rgba(244, 114, 182, 0.18);
+            text-align: center;
+            transition: all 0.4s var(--smooth);
+        }
+        .home-stat:hover { transform: translateY(-3px); border-color: rgba(244, 114, 182, 0.45); }
+        .home-stat-num {
+            font-size: clamp(20px, 4vw, 28px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-frost), var(--accent-berry));
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+        .home-stat-label {
+            font-size: 10.5px; letter-spacing: 0.7px;
+            text-transform: uppercase;
+            opacity: 0.7; font-weight: 600;
+        }
+
+        /* СЕКЦИИ */
+        .home-section { margin-top: 36px; animation: ultraEntrance 0.7s var(--ultra-smooth) both; }
+        .home-section-head { margin-bottom: 14px; padding: 0 4px; }
+        .home-section-head h3 {
+            margin: 0 0 4px;
+            font-size: 16px; font-weight: 700;
+            letter-spacing: -0.2px;
+            color: var(--text-main);
+        }
+        .home-section-head span { font-size: 11.5px; opacity: 0.6; }
+
+        /* О НАШЕМ СЕРВИСЕ — 4 КЛИКАБЕЛЬНЫЕ ЗОНЫ */
+        .home-about-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .home-about-card {
+            position: relative; overflow: hidden;
+            padding: 18px 16px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.55), rgba(15, 23, 42, 0.35));
+            border: 1px solid rgba(244, 114, 182, 0.18);
+            cursor: pointer;
+            transition: transform 0.4s var(--ultra-smooth), border-color 0.35s var(--smooth), box-shadow 0.4s var(--ultra-smooth), background 0.4s var(--smooth);
+            color: var(--text-main);
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .home-about-card::before {
+            content: ''; position: absolute; inset: -1px;
+            background: linear-gradient(135deg, transparent 30%, rgba(244,114,182,0.18), transparent 80%);
+            opacity: 0; transition: opacity 0.45s var(--smooth);
+            border-radius: inherit; pointer-events: none;
+        }
+        .home-about-card:hover, .home-about-card:active {
+            transform: translateY(-5px);
+            border-color: var(--accent-berry);
+            box-shadow: 0 14px 32px rgba(244, 114, 182, 0.25);
+        }
+        .home-about-card:hover::before, .home-about-card:active::before { opacity: 1; }
+        .home-about-icon {
+            width: 42px; height: 42px; border-radius: 12px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, rgba(244,114,182,0.22), rgba(129,140,248,0.18));
+            border: 1px solid rgba(244,114,182,0.35);
+            font-size: 22px;
+        }
+        .home-about-title {
+            font-size: 14px; font-weight: 800;
+            letter-spacing: 0.4px;
+            color: var(--text-main);
+        }
+        .home-about-desc {
+            font-size: 11.5px; line-height: 1.5;
+            opacity: 0.78;
+        }
+        body.light-mode .home-about-card {
+            background: #ffffff;
+            border-color: rgba(244, 114, 182, 0.3);
+            box-shadow: 0 2px 10px rgba(30, 27, 75, 0.06);
+        }
+        body.light-mode .home-about-desc { color: #475569; opacity: 1; }
+
+        /* ИНФО-БЛОК С ДОП. ТЕКСТОМ */
+        .home-info-block {
+            margin-top: 18px;
+            padding: 22px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.06), rgba(129, 140, 248, 0.04));
+            border: 1px solid rgba(244, 114, 182, 0.18);
+        }
+        .home-info-block h4 { margin: 0 0 10px; font-size: 14px; letter-spacing: 0.5px; }
+        .home-info-block p { margin: 0 0 10px; font-size: 13px; line-height: 1.65; opacity: 0.85; }
+        .home-info-block ul { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; opacity: 0.85; }
+        .home-info-block li { margin-bottom: 4px; }
+        body.light-mode .home-info-block { background: #ffffff; border-color: rgba(244,114,182,0.3); box-shadow: 0 2px 10px rgba(30,27,75,0.05); }
+        body.light-mode .home-info-block p, body.light-mode .home-info-block ul { color: #334155; opacity: 1; }
+
+        /* НОВОСТНАЯ ЛЕНТА — КАРУСЕЛЬ С КАРТИНКАМИ И БЛЮРОМ */
+        .news-ticker-wrap {
+            position: relative;
+            overflow: hidden;
+            padding: 6px 0 16px;
+            border-radius: 18px;
+        }
+        .news-track {
+            display: flex; gap: 14px;
+            width: max-content;
+            transition: transform 0.85s var(--ultra-smooth);
+            will-change: transform;
+            cursor: grab;
+            user-select: none;
+        }
+        .news-track.is-dragging { cursor: grabbing; }
+
+        .news-tile {
+            flex: 0 0 270px;
+            position: relative;
+            border-radius: 18px;
+            overflow: hidden;
+            background: var(--card-bg);
+            border: 1px solid rgba(244, 114, 182, 0.18);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            height: 220px;
+            transition: transform 0.45s var(--ultra-smooth), box-shadow 0.45s var(--ultra-smooth), border-color 0.4s;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+        }
+        .news-tile:hover, .news-tile:active {
+            transform: translateY(-6px);
+            border-color: var(--accent-berry);
+            box-shadow: 0 14px 32px rgba(244, 114, 182, 0.32);
+        }
+        .news-tile-img {
+            position: absolute; inset: 0;
+            background-size: cover; background-position: center;
+            transition: transform 0.6s var(--ultra-smooth);
+        }
+        .news-tile:hover .news-tile-img { transform: scale(1.06); }
+        .news-tile-img::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.85) 100%);
+        }
+        .news-tile-pill {
+            position: absolute; top: 12px; left: 12px;
+            font-size: 9.5px; font-weight: 800; letter-spacing: 1.3px;
+            padding: 5px 10px; border-radius: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            z-index: 3;
+        }
+        .news-tile-fog {
+            position: absolute; left: 0; right: 0; bottom: 0;
+            padding: 18px 14px 14px;
+            background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.55) 40%, rgba(15,23,42,0.85) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 2;
+        }
+        .news-tile-title {
+            font-size: 13.5px; font-weight: 700;
+            line-height: 1.35;
+            color: #ffffff;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .news-tile-source {
+            font-size: 11px;
+            color: var(--accent-berry);
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+
+        /* СТРЕЛКИ ЛЕНТЫ — ВНУТРИ КАРУСЕЛИ ПОВЕРХ ПЛИТОК */
+        .news-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 38px; height: 38px; border-radius: 50%;
+            background: rgba(30, 27, 75, 0.78); border: 1px solid rgba(244,114,182,0.55);
+            color: #fff; cursor: pointer; z-index: 5;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 22px; line-height: 1; padding-bottom: 3px;
+            transition: background 0.3s var(--smooth), transform 0.3s var(--smooth), box-shadow 0.3s var(--smooth);
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        }
+        .news-arrow.prev { left: 8px; }
+        .news-arrow.next { right: 8px; }
+        .news-arrow:hover {
+            background: var(--accent-berry); color: #1E1B4B;
+            transform: translateY(-50%) scale(1.08);
+            box-shadow: 0 8px 22px rgba(244,114,182,0.55);
+        }
+        .news-arrow:active { transform: translateY(-50%) scale(0.94); }
+        body.light-mode .news-arrow { background: rgba(255,255,255,0.92); border-color: rgba(244,114,182,0.5); color: #1E1B4B; box-shadow: 0 4px 14px rgba(30,27,75,0.18); }
+        .news-tile { transition: transform 0.45s var(--ultra-smooth), box-shadow 0.45s var(--ultra-smooth), border-color 0.4s, filter 0.4s; }
+        .news-tile:hover { filter: brightness(1.07) saturate(1.05); }
+
+        /* БЛОК «РЕСПУБЛИКА БЕЛАРУСЬ» */
+        .home-republic {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        @media (max-width: 520px) { .home-republic { grid-template-columns: 1fr; } }
+        .rep-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(244,114,182,0.22);
+            border-radius: 16px;
+            padding: 16px 14px;
+            transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
+        }
+        .rep-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-berry);
+            box-shadow: 0 10px 26px rgba(244,114,182,0.22);
+        }
+        .rep-num {
+            font-size: 22px; font-weight: 900; color: var(--accent-berry);
+            letter-spacing: 0.5px; margin-bottom: 6px;
+            text-shadow: 0 0 18px rgba(244,114,182,0.4);
+        }
+        .rep-title { font-size: 13.5px; font-weight: 800; margin-bottom: 6px; color: var(--text-main); }
+        .rep-desc { font-size: 12px; line-height: 1.5; opacity: 0.82; color: var(--text-main); }
+        body.light-mode .rep-card { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
+
+        /* ГЕРБЫ В HERO */
         .hero-emblems {
-            display: flex; justify-content: center; align-items: center; gap: 24px;
-            margin-bottom: 24px;
+            display: flex; gap: 14px; align-items: center;
+            margin-bottom: 16px;
         }
         .hero-emblem {
-            width: 72px; height: 72px; object-fit: contain;
-            filter: drop-shadow(0 0 14px rgba(244,114,182,0.4));
-            transition: transform 0.4s var(--smooth), filter 0.4s;
+            width: 60px; height: 72px;
+            filter: drop-shadow(0 0 10px rgba(244,114,182,0.4));
+            transition: filter 0.3s, transform 0.3s;
         }
-        .hero-emblem:hover { transform: scale(1.08); filter: drop-shadow(0 0 22px rgba(244,114,182,0.7)); }
-        .home-hero-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.3);
-            border-radius: 50px; padding: 5px 14px; font-size: 11px; font-weight: 800;
-            color: var(--safe-green); letter-spacing: 1px; margin-bottom: 18px;
-        }
-        .home-hero-title { font-size: clamp(22px, 5vw, 30px); font-weight: 800; margin: 0 0 14px; line-height: 1.25; }
-        .home-hero-accent { color: var(--accent-berry); -webkit-text-fill-color: var(--accent-berry); }
-        .home-hero-sub { font-size: 14px; color: var(--text-main); opacity: 0.82; max-width: 520px; margin: 0 auto 12px; line-height: 1.65; }
-        .home-hero-extra { font-size: 13px; color: var(--text-main); opacity: 0.65; max-width: 500px; margin: 0 auto 22px; line-height: 1.6; }
-        .home-hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
-        .hero-btn {
-            padding: 12px 26px; border-radius: 50px; font-weight: 800; font-size: 13px; letter-spacing: 0.8px;
-            cursor: pointer; border: none; text-decoration: none; transition: all 0.35s var(--smooth);
-        }
-        .hero-btn.primary { background: var(--btn-static); color: #1E1B4B; box-shadow: 0 4px 18px rgba(244,114,182,0.35); }
-        .hero-btn.primary:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(244,114,182,0.55); }
-        .hero-btn.ghost { background: transparent; color: var(--text-main); border: 1.5px solid rgba(244,114,182,0.35); }
-        .hero-btn.ghost:hover { border-color: var(--accent-berry); background: rgba(244,114,182,0.08); }
+        .hero-emblem:hover { filter: drop-shadow(0 0 18px rgba(244,114,182,0.7)); transform: scale(1.06); }
 
-        .home-stats { display: flex; gap: 14px; margin: 10px 0 28px; flex-wrap: wrap; }
-        .home-stat {
-            flex: 1 1 120px; background: var(--card-bg); border-radius: 18px;
-            padding: 18px 14px; text-align: center; border: 1px solid rgba(244,114,182,0.15);
-            transition: transform 0.35s var(--smooth), box-shadow 0.35s;
-        }
-        .home-stat:hover { transform: translateY(-4px); box-shadow: 0 10px 22px rgba(244,114,182,0.15); }
-        .home-stat-num { font-size: 26px; font-weight: 800; color: var(--accent-berry); }
-        .home-stat-label { font-size: 11px; color: var(--text-main); opacity: 0.7; margin-top: 4px; }
-
-        .home-section { margin-bottom: 30px; }
-        .home-section-head { margin-bottom: 16px; }
-        .home-section-head h3 { margin: 0 0 4px; font-size: 16px; }
-        .home-section-head span { font-size: 12px; color: var(--text-main); opacity: 0.6; }
-
-        .home-about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
-        .home-about-card {
-            background: var(--card-bg); border-radius: 18px; padding: 18px 16px;
-            border: 1px solid rgba(244,114,182,0.1); cursor: pointer;
-            transition: all 0.35s var(--smooth);
-        }
-        .home-about-card:hover { transform: translateY(-4px); border-color: var(--accent-berry); box-shadow: 0 10px 22px rgba(244,114,182,0.2); }
-        .home-about-icon { font-size: 28px; margin-bottom: 10px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(244,114,182,0.1); border-radius: 14px; }
-        .home-about-title { font-size: 12px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .home-about-desc { font-size: 11.5px; color: var(--text-main); opacity: 0.7; line-height: 1.5; }
-
-        .home-info-block {
-            background: var(--card-bg); border-radius: 18px; padding: 22px 20px;
-            border: 1px solid rgba(244,114,182,0.1); font-size: 13.5px; line-height: 1.7;
-        }
-        .home-info-block h4 { margin: 0 0 12px; font-size: 15px; }
-        .home-info-block p { margin: 0 0 10px; }
-        .home-info-block ul { padding-left: 18px; margin: 0; }
-        .home-info-block li { margin-bottom: 5px; }
-
-        /* АККОРДЕОН (видео/фото) */
+        /* АККОРДЕОН-БЛОКИ (видео/фото) */
         .accord-box {
-            background: var(--card-bg); border-radius: 20px; overflow: hidden;
-            border: 1px solid rgba(244,114,182,0.15);
-            transition: border-color 0.35s var(--smooth), box-shadow 0.35s;
-            animation: ultraEntrance 0.8s var(--ultra-smooth) backwards;
+            background: var(--card-bg);
+            border: 1.5px solid rgba(244,114,182,0.18);
+            border-radius: 18px; overflow: hidden;
+            transition: border-color 0.35s, box-shadow 0.35s;
         }
-        .accord-box:hover { border-color: rgba(244,114,182,0.4); box-shadow: 0 8px 24px rgba(244,114,182,0.12); }
+        .accord-box.open { border-color: rgba(244,114,182,0.5); box-shadow: 0 8px 30px rgba(244,114,182,0.12); }
+        body.light-mode .accord-box { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
         .accord-header {
-            padding: 18px 20px; display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer; user-select: none;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px; cursor: pointer; user-select: none;
+            transition: background 0.3s;
         }
-        .accord-title { font-weight: 800; font-size: 14.5px; margin-bottom: 3px; }
-        .accord-subtitle { font-size: 11.5px; color: var(--text-main); opacity: 0.65; }
+        .accord-header:hover { background: rgba(244,114,182,0.06); }
+        .accord-title {
+            font-size: 15px; font-weight: 800; letter-spacing: 0.5px;
+            color: var(--text-main);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .accord-subtitle { font-size: 11px; opacity: 0.6; margin-top: 3px; font-weight: 500; letter-spacing: 0; display: block; }
         .accord-chevron {
-            font-size: 14px; color: var(--accent-berry);
-            transition: transform 0.5s var(--ultra-smooth); flex-shrink: 0;
+            width: 28px; height: 28px; flex-shrink: 0;
+            border: 2px solid rgba(244,114,182,0.5);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--accent-berry); font-size: 14px; line-height: 1;
+            transition: transform 0.45s var(--ultra-smooth), background 0.3s, border-color 0.3s;
         }
-        .accord-box.open .accord-chevron { transform: rotate(180deg); }
+        .accord-box.open .accord-chevron {
+            transform: rotate(180deg);
+            background: var(--accent-berry); color: #1E1B4B; border-color: var(--accent-berry);
+        }
         .accord-content {
-            display: grid; grid-template-rows: 0fr;
-            transition: grid-template-rows 0.55s var(--ultra-smooth);
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.65s var(--ultra-smooth);
         }
-        .accord-box.open .accord-content { grid-template-rows: 1fr; }
-        .accord-inner { overflow: hidden; padding: 0 18px; }
-        .accord-box.open .accord-inner { padding: 0 18px 18px; }
+        .accord-box.open .accord-content { max-height: 1200px; }
+        .accord-inner { padding: 0 16px 18px; }
 
-        /* ВИДЕО ТАБЫ */
-        .vid-tabs { display: flex; gap: 10px; margin-bottom: 14px; }
+        /* ВИДЕО ВНУТРИ АККОРДЕОНА */
+        .vid-tabs {
+            display: flex; gap: 10px; margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
         .vid-tab {
             flex: 1 1 110px;
             background: rgba(0,0,0,0.25); border: 1.5px solid rgba(244,114,182,0.2);
@@ -607,30 +1022,18 @@ HTML_LAYOUT = '''
         }
         .vid-player { width: 100%; display: block; max-height: 360px; object-fit: contain; }
 
-        /* ФОТО КАРУСЕЛЬ С СТРЕЛКАМИ */
-        .photo-carousel-wrap {
-            position: relative;
-            overflow: hidden;
-            border-radius: 16px;
+        /* ФОТО ГАЛЕРЕЯ ВНУТРИ АККОРДЕОНА */
+        .photo-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
         }
-        .photo-carousel-track-outer {
-            overflow: hidden;
-            border-radius: 14px;
-        }
-        .photo-carousel-track {
-            display: flex;
-            gap: 14px;
-            transition: transform 0.55s var(--ultra-smooth);
-        }
+        @media (max-width: 480px) { .photo-grid { grid-template-columns: 1fr; } }
         .photo-card {
-            flex: 0 0 calc(50% - 7px);
             border-radius: 14px; overflow: hidden;
             border: 1.5px solid rgba(244,114,182,0.18);
             background: var(--card-bg);
             cursor: pointer; position: relative;
             transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
         }
-        @media (max-width: 480px) { .photo-card { flex: 0 0 85%; } }
         .photo-card:hover { transform: translateY(-5px) scale(1.02); border-color: var(--accent-berry); box-shadow: 0 12px 28px rgba(244,114,182,0.3); }
         .photo-card img { width: 100%; display: block; aspect-ratio: 3/4; object-fit: cover; }
         @media (max-width: 480px) { .photo-card img { aspect-ratio: 4/3; } }
@@ -640,31 +1043,6 @@ HTML_LAYOUT = '''
             background: var(--card-bg); text-align: center;
         }
         body.light-mode .photo-card { background: #fff; box-shadow: 0 2px 10px rgba(30,27,75,0.07); }
-
-        /* Стрелки карусели — такие же как у ленты новостей */
-        .photo-arrows {
-            display: flex; justify-content: center; align-items: center; gap: 16px;
-            margin-top: 14px;
-        }
-        .photo-arrow {
-            width: 38px; height: 38px; border-radius: 50%;
-            background: rgba(244,114,182,0.15); border: 1.5px solid rgba(244,114,182,0.35);
-            color: var(--accent-berry); font-size: 20px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.3s var(--smooth);
-            user-select: none; flex-shrink: 0;
-        }
-        .photo-arrow:hover { background: var(--accent-berry); color: #1E1B4B; box-shadow: 0 4px 14px rgba(244,114,182,0.4); transform: scale(1.08); }
-        .photo-arrow:active { transform: scale(0.92); }
-        .photo-dots {
-            display: flex; gap: 7px; align-items: center;
-        }
-        .photo-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: rgba(244,114,182,0.3); border: 1px solid rgba(244,114,182,0.5);
-            cursor: pointer; transition: all 0.3s var(--smooth);
-        }
-        .photo-dot.active { background: var(--accent-berry); transform: scale(1.3); border-color: var(--accent-berry); }
 
         /* МОДАЛЬНОЕ ОКНО ФОТО */
         .photo-modal {
@@ -697,135 +1075,48 @@ HTML_LAYOUT = '''
             padding: 10px 16px; font-size: 13px; font-weight: 700; text-align: center;
         }
 
-        /* ЛЕНТА НОВОСТЕЙ */
-        .news-ticker-wrap {
-            position: relative; overflow: hidden; border-radius: 18px;
+        /* СВЕТЛАЯ ТЕМА — ЧИТАЕМОСТЬ */
+        body.light-mode { color: #1E1B4B; }
+        body.light-mode .home-hero-sub,
+        body.light-mode .home-hero-extra,
+        body.light-mode .home-stat-label,
+        body.light-mode .home-section-head span { color: #475569; opacity: 1; }
+        body.light-mode .home-stat {
+            background: #ffffff;
+            border-color: rgba(244, 114, 182, 0.35);
+            box-shadow: 0 2px 10px rgba(30, 27, 75, 0.06);
         }
-        .news-arrow-edge {
-            position: absolute; top: 50%; transform: translateY(-50%);
-            width: 34px; height: 34px; border-radius: 50%; z-index: 10;
-            background: rgba(30,27,75,0.75); border: 1.5px solid rgba(244,114,182,0.5);
-            color: var(--accent-berry); font-size: 20px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.3s var(--smooth); backdrop-filter: blur(6px);
+        body.light-mode .news-tile {
+            background: #ffffff;
+            border-color: rgba(244, 114, 182, 0.3);
+            box-shadow: 0 4px 14px rgba(30, 27, 75, 0.08);
         }
-        .news-arrow-edge.prev { left: 8px; }
-        .news-arrow-edge.next { right: 8px; }
-        .news-arrow-edge:hover { background: var(--accent-berry); color: #1E1B4B; box-shadow: 0 4px 14px rgba(244,114,182,0.45); transform: translateY(-50%) scale(1.1); }
-        .news-arrow-edge:active { transform: translateY(-50%) scale(0.92); }
-        .news-track {
-            display: flex; gap: 14px; padding: 6px 50px;
-            will-change: transform; cursor: grab; user-select: none;
-        }
-        .news-track.is-dragging { cursor: grabbing; }
-        .news-tile {
-            flex: 0 0 270px; height: 210px; border-radius: 16px; overflow: hidden;
-            position: relative; text-decoration: none; color: var(--text-main);
-            background: var(--card-bg); border: 1px solid rgba(244,114,182,0.18);
-            transition: transform 0.35s var(--smooth), box-shadow 0.35s;
-            flex-shrink: 0;
-        }
-        .news-tile:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(244,114,182,0.2); }
-        .news-tile-img {
-            position: absolute; inset: 0;
-            background-size: cover; background-position: center;
-            transition: transform 0.5s var(--smooth);
-        }
-        .news-tile:hover .news-tile-img { transform: scale(1.06); }
-        .news-tile-pill {
-            position: absolute; top: 10px; left: 10px; z-index: 2;
-            background: var(--accent-berry); color: #1E1B4B;
-            font-size: 10px; font-weight: 800; letter-spacing: 0.7px;
-            padding: 3px 10px; border-radius: 50px;
-        }
-        .news-tile-fog {
-            position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
-            background: linear-gradient(to top, rgba(15,23,42,0.92), transparent);
-            padding: 32px 14px 14px;
-        }
-        .news-tile-title { font-size: 13px; font-weight: 700; line-height: 1.4; margin-bottom: 4px; }
-        .news-tile-source { font-size: 10px; opacity: 0.6; }
+        body.light-mode .hero-btn.ghost { color: #1E1B4B; border-color: rgba(244, 114, 182, 0.5); }
+        body.light-mode .home-hero-badge { background: rgba(74, 222, 128, 0.12); color: #166534; border-color: rgba(34, 197, 94, 0.4); }
 
-        /* СЕКЦИЯ ПУТИ */
-        .home-path {
-            background: var(--card-bg); border-radius: 16px; padding: 16px 18px;
-            border: 1px solid rgba(244,114,182,0.1); margin-bottom: 12px;
-            display: flex; align-items: flex-start; gap: 14px; cursor: pointer;
-            transition: all 0.35s var(--smooth);
-        }
-        .home-path:hover { border-color: var(--accent-berry); background: rgba(244,114,182,0.07); transform: translateX(4px); }
-        .home-path-num { 
-            width: 32px; height: 32px; border-radius: 50%; background: var(--accent-berry);
-            color: #1E1B4B; font-weight: 800; font-size: 14px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .home-path-title { font-weight: 800; font-size: 13.5px; margin-bottom: 4px; }
-        .home-path-desc { font-size: 12px; color: var(--text-main); opacity: 0.7; line-height: 1.5; }
+        body.light-mode .nav-island { background: #ffffff; border-color: rgba(244,114,182,0.45); box-shadow: 0 8px 24px rgba(30,27,75,0.1); }
+        body.light-mode .nav-link { color: #1E1B4B; }
+        body.light-mode .system-footer { color: #1E1B4B; }
+        body.light-mode .memo-content p,
+        body.light-mode .memo-content li,
+        body.light-mode .memo-content ul { color: #1E1B4B; }
+        body.light-mode .detail-text { color: #334155; }
+        body.light-mode [style*="color: #cbd5e1"] { color: #475569 !important; }
+        body.light-mode [style*="color: var(--text-main)"][style*="opacity"] { color: #334155 !important; }
 
-        /* СИМ-СЕТКА */
-        .sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
-        .sim-card {
-            background: rgba(0,0,0,0.2); border: 1px solid rgba(244,114,182,0.15);
-            border-radius: 16px; padding: 18px 8px;
-            text-align: center; cursor: pointer;
-            transition: all 0.35s var(--smooth);
-        }
-        .sim-card:hover { border-color: var(--accent-berry); background: rgba(244,114,182,0.1); transform: translateY(-4px); }
-
-        /* ЧАТ */
-        .chat-container { background: rgba(0,0,0,0.25); border-radius: 18px; overflow: hidden; border: 1px solid rgba(244,114,182,0.2); }
-        .chat-header { padding: 14px 18px; background: rgba(244,114,182,0.1); font-size: 13px; font-weight: 800; letter-spacing: 1px; }
-        .chat-messages { height: 280px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: var(--accent-berry) transparent; }
-        .msg { max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.5; word-break: break-word; }
-        .msg.bot { background: rgba(129,140,248,0.15); border: 1px solid rgba(129,140,248,0.25); align-self: flex-start; }
-        .msg.user { background: rgba(244,114,182,0.15); border: 1px solid rgba(244,114,182,0.25); align-self: flex-end; text-align: right; }
-        .chat-input-area { display: flex; gap: 8px; padding: 12px 15px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(244,114,182,0.1); }
-        .chat-send-btn { background: var(--accent-berry); color: #1E1B4B; border: none; border-radius: 12px; padding: 0 18px; font-size: 18px; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
-        .chat-send-btn:active { transform: scale(0.9); }
-
-        /* PASSWORD PAGE */
-        .pw-rules { margin: 18px 0; display: flex; flex-direction: column; gap: 8px; }
-        .pw-rule { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 10px 14px; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px solid rgba(244,114,182,0.1); transition: border-color 0.3s; }
-        .pw-rule.active { border-color: var(--safe-green); background: rgba(74,222,128,0.07); }
-        .pw-rule-icon { width: 20px; text-align: center; font-size: 16px; flex-shrink: 0; }
-        .pw-rule-icon::before { content: '✗'; color: var(--danger-red); }
-        .pw-rule.active .pw-rule-icon::before { content: '✔'; color: var(--safe-green); }
-        .pw-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
-        .pw-stat { background: rgba(0,0,0,0.15); border-radius: 14px; padding: 14px; text-align: center; border: 1px solid rgba(244,114,182,0.1); }
-        .pw-stat-val { font-size: 22px; font-weight: 800; color: var(--accent-berry); display: block; margin-bottom: 4px; }
-        .pw-stat-label { font-size: 10px; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.8px; }
-
-        /* ГОЛОСОВАЯ КНОПКА */
-        .voice-btn {
-            float: right; background: rgba(244,114,182,0.15); border: 1px solid rgba(244,114,182,0.3);
-            border-radius: 50%; width: 32px; height: 32px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 14px;
-            transition: all 0.3s; margin-left: 10px;
-        }
-        .voice-btn:hover { background: var(--accent-berry); color: #1E1B4B; }
-
-        /* ПИНГ */
-        .ping-indicator {
-            display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
-            padding: 4px 12px; border-radius: 50px;
-            background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--safe-green);
-        }
-        .ping-indicator.warn { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
-        .ping-indicator.bad { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: var(--danger-red); }
-        .ping-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulseDot 1.5s infinite; }
-        @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)} }
-
-        /* ФУТЕР */
-        .system-footer { text-align: center; padding: 30px 10px 20px; font-size: 11px; opacity: 0.5; }
-
-        /* ГЕНЕРАТОР */
+        /* --- КНОПКА ГЕНЕРАЦИИ ПАРОЛЯ --- */
         .generator-card {
-            margin-top: 18px; padding: 22px 18px; border-radius: 22px;
-            background: linear-gradient(135deg, rgba(244,114,182,0.12), rgba(165,243,252,0.07));
-            border: 1px solid rgba(244,114,182,0.3); text-align: center; position: relative; overflow: hidden;
+            margin-top: 18px;
+            padding: 22px 18px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.12), rgba(165, 243, 252, 0.07));
+            border: 1px solid rgba(244, 114, 182, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
             transition: all 0.4s var(--smooth);
         }
-        .generator-card:hover { border-color: var(--accent-berry); box-shadow: 0 8px 24px rgba(244,114,182,0.3); }
+        .generator-card:hover { border-color: var(--accent-berry); box-shadow: 0 8px 24px rgba(244, 114, 182, 0.3); }
         .generator-card h4 { margin: 0 0 6px; font-size: 15px; letter-spacing: 1px; }
         .generator-card p { font-size: 11.5px; opacity: 0.75; margin: 0 0 14px; }
         .btn-generate {
@@ -833,34 +1124,71 @@ HTML_LAYOUT = '''
             background: linear-gradient(135deg, var(--accent-frost), var(--accent-berry));
             color: #1E1B4B; font-weight: 800; font-size: 13px; letter-spacing: 1.3px;
             cursor: pointer; transition: all 0.35s var(--smooth);
-            box-shadow: 0 4px 14px rgba(244,114,182,0.35);
+            box-shadow: 0 4px 14px rgba(244, 114, 182, 0.35);
         }
-        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(244,114,182,0.55); }
+        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(244, 114, 182, 0.55); }
         .btn-generate:active { transform: translateY(0) scale(0.98); }
 
-        /* МОБИЛЬНАЯ */
+        /* ============================================
+           МОБИЛЬНАЯ ВЕРСИЯ — ПЛАВНОСТЬ И ОДИНАКОВЫЕ ЗОНЫ
+           ============================================ */
         @media (max-width: 600px) {
             .container { padding: 18px; padding-top: 70px; }
+
+            /* Симуляции: три одинаковые карточки */
             .sim-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-            .sim-card { padding: 12px 4px; }
+            .sim-card {
+                padding: 12px 4px;
+                min-height: 95px;
+                aspect-ratio: 1 / 1.05;
+                width: 100%;
+            }
+            .sim-card span { font-size: 22px; line-height: 1; margin-bottom: 6px !important; }
+            .sim-card b { font-size: 9.5px; letter-spacing: 0.4px; line-height: 1.15; word-break: break-word; }
+
+            /* О сервисе — две колонки */
             .home-about-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .home-about-card { padding: 14px 12px; }
+            .home-about-icon { width: 38px; height: 38px; font-size: 20px; }
+            .home-about-title { font-size: 12.5px; }
+            .home-about-desc { font-size: 11px; }
+
             .news-tile { flex: 0 0 240px; height: 200px; }
+            .news-tile-title { font-size: 12.5px; }
+
+            .nav-island { padding: 10px 22px; gap: 22px; }
         }
 
+        /* На устройствах без hover (телефоны/планшеты) — добавляем плавные active-состояния */
         @media (hover: none), (pointer: coarse) {
             .home-stat, .home-path, .news-tile, .sim-card,
             .memo-box, .info-box, .home-about-card, .quiz-option,
-            .hero-btn, .news-arrow-edge, .menu-item, .photo-arrow {
+            .hero-btn, .news-arrow, .menu-item {
                 -webkit-tap-highlight-color: transparent;
-                transition: transform 0.35s var(--ultra-smooth), box-shadow 0.35s var(--ultra-smooth),
-                            background 0.35s var(--smooth), border-color 0.35s var(--smooth), opacity 0.35s var(--smooth);
+                transition: transform 0.35s var(--ultra-smooth),
+                            box-shadow 0.35s var(--ultra-smooth),
+                            background 0.35s var(--smooth),
+                            border-color 0.35s var(--smooth),
+                            opacity 0.35s var(--smooth);
             }
-            .home-about-card:active, .sim-card:active, .home-stat:active,
-            .quiz-option:active, .home-path:active { transform: scale(0.97); opacity: 0.92; }
+            .home-about-card:active,
+            .sim-card:active,
+            .home-stat:active,
+            .quiz-option:active,
+            .home-path:active {
+                transform: scale(0.97);
+                opacity: 0.92;
+            }
             .news-tile:active { transform: translateY(-3px) scale(0.98); }
             .menu-item:active { transform: scale(0.98); }
             .hero-btn:active { transform: translateY(2px) scale(0.97); }
-            .news-arrow-edge:active { transform: translateY(-50%) scale(0.92); }
+            .news-arrow:active { transform: scale(0.92); }
+
+            /* Чтобы ленты и карточки плавно прорисовывались */
+            .news-track, .home-about-card, .home-stat, .sim-card,
+            .news-tile, .menu-item, .home-info-block {
+                will-change: transform, opacity;
+            }
         }
     </style>
 </head>
@@ -873,14 +1201,10 @@ HTML_LAYOUT = '''
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
     <div class="side-menu" id="side-menu">
 
-        <!-- Реальные гербы РБ и МВД — показываются при раскрытии -->
+        <!-- Гербы РБ и МВД — показываются только при раскрытии -->
         <div class="menu-emblems">
-            <img class="menu-emblem-img" src="''' + cld_img('cybershield/emblem_rb', 'png') + '''" 
-                 onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Coat_of_Arms_of_Belarus.svg/80px-Coat_of_Arms_of_Belarus.svg.png'"
-                 alt="Герб РБ" title="Герб Республики Беларусь">
-            <img class="menu-emblem-img" src="''' + cld_img('cybershield/emblem_mvd', 'png') + '''" 
-                 onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg/80px-Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg.png'"
-                 alt="МВД РБ" title="МВД Республики Беларусь">
+            <img class="menu-emblem-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Coat_of_Arms_of_Belarus.svg/48px-Coat_of_Arms_of_Belarus.svg.png" alt="Герб РБ" title="Герб Республики Беларусь">
+            <img class="menu-emblem-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg/48px-Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg.png" alt="МВД РБ" title="МВД Республики Беларусь">
         </div>
 
         <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home')">
@@ -896,7 +1220,7 @@ HTML_LAYOUT = '''
             <span class="menu-ico">🔑</span><span class="menu-label">ПАРОЛЬНЫЙ СТРАЖ</span>
         </a>
         
-        <hr style="width:80%;border:none;border-top:1px solid rgba(244,114,182,0.3);margin:auto auto 10px auto;">
+        <hr style="width: 80%; border: none; border-top: 1px solid rgba(244, 114, 182, 0.3); margin: auto auto 10px auto; opacity: 0; transition: opacity 0.5s;">
         
         <a href="https://t.me/CyberNodes_bot" target="_blank" class="tg-super-btn tg-menu-btn">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.96 1.25-5.54 3.67-.52.36-.99.54-1.41.53-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.23.36-.48.98-.74 3.84-1.68 6.4-2.78 7.68-3.32 3.65-1.53 4.41-1.8 4.9-1.81.11 0 .35.03.48.14.11.09.14.22.14.35-.01.12-.01.24-.02.35z"/></svg>
@@ -906,19 +1230,12 @@ HTML_LAYOUT = '''
 
     <div class="container">
 
-        <!-- ============================= ГЛАВНАЯ ============================= -->
         <div id="page-home" class="page-content">
 
             <section class="home-hero">
                 <div class="hero-emblems">
-                    <img class="hero-emblem" 
-                         src="''' + cld_img('cybershield/emblem_rb', 'png') + '''"
-                         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Coat_of_Arms_of_Belarus.svg/120px-Coat_of_Arms_of_Belarus.svg.png'"
-                         alt="Герб Республики Беларусь" title="Республика Беларусь">
-                    <img class="hero-emblem" 
-                         src="''' + cld_img('cybershield/emblem_mvd', 'png') + '''"
-                         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg/120px-Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg.png'"
-                         alt="МВД Республики Беларусь" title="МВД Республики Беларусь">
+                    <img class="hero-emblem" src="/static/emblem_rb.svg" alt="Герб Республики Беларусь" title="Республика Беларусь">
+                    <img class="hero-emblem" src="/static/emblem_mvd.svg" alt="МВД Республики Беларусь" title="МВД Республики Беларусь">
                 </div>
                 <h1 class="home-hero-title">Защита, которая<br><span class="home-hero-accent">говорит на твоём языке</span></h1>
                 <p class="home-hero-sub">CyberShield — белорусский интеллектуальный щит. Проверка ссылок, разоблачение мошенников и тренировка реакции на цифровые угрозы — всё в одном месте, простым языком и без рекламы.</p>
@@ -953,29 +1270,29 @@ HTML_LAYOUT = '''
                     <div class="home-about-card" onclick="switchPage('scanner')">
                         <div class="home-about-icon">🛡️</div>
                         <div class="home-about-title">ПРОВЕРЯТОР ССЫЛОК</div>
-                        <div class="home-about-desc">Глубокий анализ URL через VirusTotal и собственный ИИ-вердикт.</div>
+                        <div class="home-about-desc">Глубокий анализ URL через VirusTotal и собственный ИИ-вердикт. Поможем понять, можно ли переходить по ссылке.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('info')">
                         <div class="home-about-icon">📚</div>
                         <div class="home-about-title">ИНФОРМАЦИЯ И ТЕСТЫ</div>
-                        <div class="home-about-desc">Памятка по безопасности, справочник угроз и кибер-экзамен.</div>
+                        <div class="home-about-desc">Памятка по безопасности, справочник угроз, ИИ-помощник и кибер-экзамен на внимательность и грамотность.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('info')">
                         <div class="home-about-icon">🔥</div>
                         <div class="home-about-title">СИМУЛЯЦИИ С ИИ</div>
-                        <div class="home-about-desc">Сразитесь с виртуальным мошенником. ИИ Groq отыграет реальную атаку.</div>
+                        <div class="home-about-desc">Сразитесь с виртуальным мошенником в чате. ИИ Groq отыграет реальную атаку, а мы оценим вашу защиту.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('password')">
                         <div class="home-about-icon">🔑</div>
                         <div class="home-about-title">ПАРОЛЬНЫЙ СТРАЖ</div>
-                        <div class="home-about-desc">Анализ криптостойкости и генератор по-настоящему надёжных паролей.</div>
+                        <div class="home-about-desc">Анализ криптостойкости и генератор по-настоящему надёжных паролей. Все вычисления идут только в вашем браузере.</div>
                     </div>
                 </div>
 
                 <div class="home-info-block">
                     <h4 class="shimmer-text">💎 Почему это важно</h4>
-                    <p>По данным МВД Беларуси, более 70% хищений со счетов граждан начинаются с обычной ссылки или телефонного звонка. Мошенники не «взламывают» технику — они взламывают невнимательность.</p>
-                    <p>Сервис не собирает ваши данные, не сохраняет пароли и не передаёт ссылки третьим лицам.</p>
+                    <p>По данным МВД Беларуси, более 70% хищений со счетов граждан начинаются с обычной ссылки или телефонного звонка. Мошенники не «взламывают» технику — они взламывают невнимательность. CyberShield тренирует именно это: умение остановиться, проверить и не сделать поспешный шаг.</p>
+                    <p>Сервис не собирает ваши данные, не сохраняет пароли и не передаёт ссылки третьим лицам. Все проверки проходят анонимно, а парольный анализ работает прямо в браузере, не покидая устройство.</p>
                     <ul>
                         <li>Полностью бесплатно и без регистрации.</li>
                         <li>Понятный язык — без сложной терминологии.</li>
@@ -985,7 +1302,7 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
-            <!-- ===== ВИДЕО (аккордеон, Cloudinary) ===== -->
+            <!-- ===== ВИДЕО (аккордеон) ===== -->
             <section class="home-section">
                 <div class="accord-box" id="accord-video">
                     <div class="accord-header" onclick="toggleAccord('accord-video')">
@@ -998,22 +1315,22 @@ HTML_LAYOUT = '''
                     <div class="accord-content">
                         <div class="accord-inner">
                             <div class="vid-tabs" id="vid-tabs">
-                                <button class="vid-tab active" data-src="''' + cld_vid('cybershield/video_bezopasnost') + '''" onclick="selectVideo(this)">
+                                <button class="vid-tab active" data-src="/static/video_bezopasnost.mp4" onclick="selectVideo(this)">
                                     <span class="vid-tab-ico">🌐</span>
                                     <span class="vid-tab-text">Безопасность<br>в интернете</span>
                                 </button>
-                                <button class="vid-tab" data-src="''' + cld_vid('cybershield/video_soobscheniya') + '''" onclick="selectVideo(this)">
+                                <button class="vid-tab" data-src="/static/video_soobscheniya.mp4" onclick="selectVideo(this)">
                                     <span class="vid-tab-ico">📨</span>
                                     <span class="vid-tab-text">Сообщения<br>от мошенников</span>
                                 </button>
-                                <button class="vid-tab" data-src="''' + cld_vid('cybershield/video_vygryshi') + '''" onclick="selectVideo(this)">
+                                <button class="vid-tab" data-src="/static/video_vygryshi.mp4" onclick="selectVideo(this)">
                                     <span class="vid-tab-ico">🎰</span>
                                     <span class="vid-tab-text">Внезапные<br>выигрыши</span>
                                 </button>
                             </div>
                             <div class="vid-player-wrap">
                                 <video id="main-video" class="vid-player" controls preload="metadata" playsinline>
-                                    <source id="main-video-src" src="''' + cld_vid('cybershield/video_bezopasnost') + '''" type="video/mp4">
+                                    <source id="main-video-src" src="/static/video_bezopasnost.mp4" type="video/mp4">
                                     Ваш браузер не поддерживает видео.
                                 </video>
                             </div>
@@ -1022,7 +1339,7 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
-            <!-- ===== ФОТО КАРУСЕЛЬ СО СТРЕЛКАМИ (Cloudinary) ===== -->
+            <!-- ===== ФОТО (аккордеон) ===== -->
             <section class="home-section">
                 <div class="accord-box" id="accord-photo">
                     <div class="accord-header" onclick="toggleAccord('accord-photo')">
@@ -1034,40 +1351,23 @@ HTML_LAYOUT = '''
                     </div>
                     <div class="accord-content">
                         <div class="accord-inner">
-                            <!-- Карусель с стрелками -->
-                            <div class="photo-carousel-wrap">
-                                <div class="photo-carousel-track-outer">
-                                    <div class="photo-carousel-track" id="photo-track">
-                                        <div class="photo-card" onclick="openPhotoModal('''' + cld_img('cybershield/img_apk') + """','Вирусные APK-файлы — как защититься')">
-                                            <img src=\"""" + cld_img('cybershield/img_apk') + """\" 
-                                                 onerror="this.src='https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400'"
-                                                 alt="Вирусные APK-файлы" loading="lazy">
-                                            <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
-                                        </div>
-                                        <div class="photo-card" onclick="openPhotoModal('""" + cld_img('cybershield/img_kids') + """','Безопасный интернет для детей')">
-                                            <img src=\"""" + cld_img('cybershield/img_kids') + """\"
-                                                 onerror="this.src='https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400'"
-                                                 alt="Безопасный интернет для детей" loading="lazy">
-                                            <div class="photo-card-label">👦 Безопасный интернет</div>
-                                        </div>
-                                        <div class="photo-card" onclick="openPhotoModal('""" + cld_img('cybershield/img_konkurs', 'png') + """','#КиберПраво: твой щит в сети — конкурс')">
-                                            <img src=\"""" + cld_img('cybershield/img_konkurs', 'png') + """\"
-                                                 onerror="this.src='https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400'"
-                                                 alt="#КиберПраво конкурс" loading="lazy">
-                                            <div class="photo-card-label">🏆 #КиберПраво</div>
-                                        </div>
-                                    </div>
+                            <div class="photo-grid">
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_apk.jpg','Вирусные APK-файлы — как защититься')">
+                                    <img src="/static/img_apk.jpg" alt="Вирусные APK-файлы" loading="lazy">
+                                    <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
                                 </div>
-                            </div>
-                            <!-- Стрелки и точки — такой же стиль как у памятки -->
-                            <div class="photo-arrows">
-                                <button class="photo-arrow" id="photo-prev" aria-label="Назад">&#8249;</button>
-                                <div class="photo-dots" id="photo-dots">
-                                    <div class="photo-dot active" onclick="goToPhotoSlide(0)"></div>
-                                    <div class="photo-dot" onclick="goToPhotoSlide(1)"></div>
-                                    <div class="photo-dot" onclick="goToPhotoSlide(2)"></div>
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_kids.jpg','Безопасный интернет для детей')">
+                                    <img src="/static/img_kids.jpg" alt="Безопасный интернет для детей" loading="lazy">
+                                    <div class="photo-card-label">👦 Безопасный интернет</div>
                                 </div>
-                                <button class="photo-arrow" id="photo-next" aria-label="Вперёд">&#8250;</button>
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_hacker.png','Угрозы в сети — типичные схемы хакерских атак')">
+                                    <img src="/static/img_hacker.png" alt="Угрозы в сети" loading="lazy">
+                                    <div class="photo-card-label">🖥️ Угрозы в сети</div>
+                                </div>
+                                <div class="photo-card" onclick="openPhotoModal('/static/img_konkurs.png','#КиберПраво: твой щит в сети — конкурс')">
+                                    <img src="/static/img_konkurs.png" alt="#КиберПраво конкурс" loading="lazy">
+                                    <div class="photo-card-label">🏆 #КиберПраво</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1081,8 +1381,8 @@ HTML_LAYOUT = '''
                     <span>Официальные источники — Республика Беларусь</span>
                 </div>
                 <div class="news-ticker-wrap" id="news-ticker">
-                    <button class="news-arrow-edge prev" id="news-prev" aria-label="Назад">&#8249;</button>
-                    <button class="news-arrow-edge next" id="news-next" aria-label="Вперёд">&#8250;</button>
+                    <button class="news-arrow news-arrow-edge prev" id="news-prev" aria-label="Назад">‹</button>
+                    <button class="news-arrow news-arrow-edge next" id="news-next" aria-label="Вперёд">›</button>
                     <div class="news-track" id="news-track">
                         <a href="https://mvd.gov.by/ru/page/upravlenie-k" target="_blank" rel="noopener" class="news-tile">
                             <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=800&q=80&fit=crop&auto=format');"></div>
@@ -1179,11 +1479,10 @@ HTML_LAYOUT = '''
 
         </div>
 
-        <!-- ============================= ПРОВЕРЯТОР ============================= -->
-        <div id="page-scanner" class="page-content" style="display:none;opacity:0;">
+        <div id="page-scanner" class="page-content" style="display: none; opacity: 0;">
             <div class="search-card">
                 <h1 class="logo-main shimmer-text"><span>🛡️</span> CyberShield</h1>
-                <p style="color:#cbd5e1;font-size:14px;">Экспертный анализ сетевого мошенничества</p>
+                <p style="color: #cbd5e1; font-size: 14px;">Экспертный анализ сетевого мошенничества</p>
                 <form id="check-form" action="/check" method="POST" onsubmit="showLoading()">
                     <div class="input-wrapper">
                         <input type="text" id="url-input-field" name="url" placeholder="Вставьте ссылку" required>
@@ -1192,7 +1491,7 @@ HTML_LAYOUT = '''
                 </form>
                 <div id="loading-overlay">
                     <div class="loader-ring"></div>
-                    <p class="shimmer-text" style="font-size:14px;">ЗАПУСК ИИ-СКАНЕРА...</p>
+                    <p class="shimmer-text" style="font-size: 14px;">ЗАПУСК ИИ-СКАНЕРА...</p>
                 </div>
             </div>
 
@@ -1202,10 +1501,11 @@ HTML_LAYOUT = '''
                     {{ 'УГРОЗА ОБНАРУЖЕНА' if stats and stats.malicious > 0 else 'СИСТЕМА БЕЗОПАСНА' }}
                 </h3>
                 <div class="stats-grid">
-                    <div class="stat-box"><span class="stat-val" style="color:var(--danger-red)">{{stats.malicious}}</span><span style="font-size:10px;">ВИРУСЫ</span></div>
-                    <div class="stat-box"><span class="stat-val" style="color:#fbbf24">{{stats.suspicious}}</span><span style="font-size:10px;">РИСКИ</span></div>
-                    <div class="stat-box"><span class="stat-val" style="color:var(--safe-green)">{{stats.harmless}}</span><span style="font-size:10px;">ЧИСТО</span></div>
+                    <div class="stat-box"><span class="stat-val" style="color: var(--danger-red)">{{stats.malicious}}</span><span style="font-size:10px;">ВИРУСЫ</span></div>
+                    <div class="stat-box"><span class="stat-val" style="color: #fbbf24">{{stats.suspicious}}</span><span style="font-size:10px;">РИСКИ</span></div>
+                    <div class="stat-box"><span class="stat-val" style="color: var(--safe-green)">{{stats.harmless}}</span><span style="font-size:10px;">ЧИСТО</span></div>
                 </div>
+                
                 <div class="detail-box {{ 'danger' if stats.malicious > 0 else 'safe' }}">
                     <div class="detail-list">
                         {% for item in detail_items %}
@@ -1219,100 +1519,94 @@ HTML_LAYOUT = '''
                         {% endfor %}
                     </div>
                 </div>
+
                 <div class="ai-box">
                     <button class="voice-btn" id="speak-btn" onclick="speakText()"><span>🔊</span></button>
-                    <b class="shimmer-text" style="font-size:11px;display:block;margin-bottom:8px;letter-spacing:1px;">ВЕРДИКТ ИИ</b>
+                    <b class="shimmer-text" style="font-size: 11px; display: block; margin-bottom: 8px; letter-spacing: 1px;">ВЕРДИКТ ИИ</b>
                     <div id="ai-verdict-text">{{ ai_text }}</div>
                 </div>
             </div>
             {% endif %}
 
             <div class="radar-box">
-                <h4 class="shimmer-text" style="margin:0 0 5px;font-size:16px;">🌐 ЦЕНТР МОНИТОРИНГА</h4>
-                <p style="font-size:11px;color:var(--text-main);opacity:0.7;margin-bottom:15px;">Логирование активности узлов CyberShield</p>
+                <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 16px;">🌐 ЦЕНТР МОНИТОРИНГА</h4>
+                <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px;">Логирование активности узлов CyberShield</p>
                 <div class="radar-circle">
                     <div class="blip blip1"></div>
                     <div class="blip blip2"></div>
                     <div class="blip blip3"></div>
                 </div>
                 <div class="cyber-logs" id="cyber-logs">
-                    <div style="color:var(--safe-green);font-family:monospace;font-size:11px;">> СЕТЬ CyberShield АКТИВНА. ОЖИДАНИЕ ЗАПРОСОВ...</div>
+                    <div style="color: var(--safe-green); font-family: monospace; font-size: 11px;">> СЕТЬ CyberShield АКТИВНА. ОЖИДАНИЕ ЗАПРОСОВ...</div>
                 </div>
-            </div>
-            <div style="text-align:center;margin-top:16px;">
-                <span class="ping-indicator" id="ping-indicator">
-                    <span class="ping-dot"></span>
-                    <span id="ping-value">--- ms</span>
-                </span>
             </div>
         </div>
 
-        <!-- ============================= ИНФОРМАЦИЯ ============================= -->
-        <div id="page-info" class="page-content" style="display:none;opacity:0;">
+        <div id="page-info" class="page-content" style="display: none; opacity: 0;">
             <div class="memo-box" id="memo-container">
                 <div class="memo-header" onclick="toggleAccordion('memo-container')">
                     <span class="shimmer-text">💡 Памятка по безопасности</span>
                     <div class="chevron"></div>
                 </div>
                 <div class="memo-content">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-                        <div><b class="shimmer-text" style="font-size:12px;">Правила проверки:</b><ul style="padding-left:15px;font-size:11px;"><li>Сверяйте домен по каждой букве.</li><li>HTTPS — не гарантия 100% защиты.</li><li>Не переходите по сокращённым ссылкам.</li><li>Проверяйте возраст домена сайта.</li><li>Используйте только CyberShield.</li></ul></div>
-                        <div><b class="shimmer-text" style="font-size:12px;">Меры защиты:</b><ul style="padding-left:15px;font-size:11px;"><li>Включите 2FA во всех сервисах.</li><li>Регулярно очищайте кэш и cookie.</li><li>Не сохраняйте пароли в браузере.</li><li>Обновляйте ОС и браузер вовремя.</li><li>Используйте сложные разные пароли.</li></ul></div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div><b class="shimmer-text" style="font-size:12px;">Правила проверки:</b><ul style="padding-left:15px; font-size:11px;"><li>Сверяйте домен по каждой букве.</li><li>HTTPS — не гарантия 100% защиты.</li><li>Не переходите по сокращённым ссылкам.</li><li>Проверяйте возраст домена сайта.</li><li>Используйте только CyberShield.</li></ul></div>
+                        <div><b class="shimmer-text" style="font-size:12px;">Меры защиты:</b><ul style="padding-left:15px; font-size:11px;"><li>Включите 2FA во всех сервисах.</li><li>Регулярно очищайте кэш и cookie.</li><li>Не сохраняйте пароли в браузере.</li><li>Обновляйте ОС и браузер вовремя.</li><li>Используйте сложные разные пароли.</li></ul></div>
                     </div>
                 </div>
             </div>
 
             <div class="report-card">
-                <h3 class="shimmer-text" style="text-align:center;margin-top:0;">📖 СПРАВОЧНИК</h3>
-                <p style="font-size:13px;color:var(--text-main);text-align:center;opacity:0.8;margin-bottom:20px;">Продвинутая база данных кибер-угроз нового поколения.</p>
+                <h3 class="shimmer-text" style="text-align:center; margin-top:0;">📖 СПРАВОЧНИК</h3>
+                <p style="font-size: 13px; color: var(--text-main); text-align: center; opacity: 0.8; margin-bottom: 20px;">Продвинутая база данных кибер-угроз нового поколения.</p>
                 <div class="detail-box safe">
                     <div class="detail-row">
-                        <div class="detail-indicator" style="background:var(--safe-green);box-shadow:0 0 10px var(--safe-green);"></div>
+                        <div class="detail-indicator" style="background: var(--safe-green); box-shadow: 0 0 10px var(--safe-green);"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:var(--safe-green);">ТРОЯН</span>
+                            <span class="detail-label" style="color: var(--safe-green);">ТРОЯН</span>
                             <span class="detail-text">Вредоносное программное обеспечение, маскирующееся под легитимный софт для скрытного внедрения в систему.</span>
                         </div>
                     </div>
-                    <div class="detail-row" style="margin-top:10px;">
-                        <div class="detail-indicator" style="background:var(--danger-red);box-shadow:0 0 10px var(--danger-red);"></div>
+                    <div class="detail-row" style="margin-top: 10px;">
+                        <div class="detail-indicator" style="background: var(--danger-red); box-shadow: 0 0 10px var(--danger-red);"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:var(--danger-red);">ВИШИНГ</span>
+                            <span class="detail-label" style="color: var(--danger-red);">ВИШИНГ</span>
                             <span class="detail-text">Форма социальной инженерии через голосовую связь. Метод направлен на получение доступа к данным через манипуляции.</span>
                         </div>
                     </div>
-                    <div class="detail-row" style="margin-top:10px;">
-                        <div class="detail-indicator" style="background:var(--accent-berry);box-shadow:0 0 10px var(--accent-berry);"></div>
+                    <div class="detail-row" style="margin-top: 10px;">
+                        <div class="detail-indicator" style="background: var(--accent-berry); box-shadow: 0 0 10px var(--accent-berry);"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:var(--accent-berry);">СТИЛЛЕР</span>
+                            <span class="detail-label" style="color: var(--accent-berry);">СТИЛЛЕР</span>
                             <span class="detail-text">Вредоносное ПО для кражи конфиденциальных данных: паролей из браузеров, cookies и ключей криптокошельков.</span>
                         </div>
                     </div>
-                    <div class="detail-row" style="margin-top:10px;">
-                        <div class="detail-indicator" style="background:#ef4444;box-shadow:0 0 10px #ef4444;"></div>
+                    <div class="detail-row" style="margin-top: 10px;">
+                        <div class="detail-indicator" style="background: #ef4444; box-shadow: 0 0 10px #ef4444;"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:#ef4444;">РЕНСОМВЕР</span>
+                            <span class="detail-label" style="color: #ef4444;">РЕНСОМВЕР</span>
                             <span class="detail-text">Программа-вымогатель. Шифрует файлы на устройстве или блокирует доступ к ОС, требуя от жертвы откуп.</span>
                         </div>
                     </div>
-                    <div class="detail-row" style="margin-top:10px;">
-                        <div class="detail-indicator" style="background:var(--accent-frost);box-shadow:0 0 10px var(--accent-frost);"></div>
+                    <div class="detail-row" style="margin-top: 10px;">
+                        <div class="detail-indicator" style="background: var(--accent-frost); box-shadow: 0 0 10px var(--accent-frost);"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:var(--accent-frost);">СОЦИАЛЬНАЯ ИНЖЕНЕРИЯ 2.0 (DEEPVOICE)</span>
+                            <span class="detail-label" style="color: var(--accent-frost);">СОЦИАЛЬНАЯ ИНЖЕНЕРИЯ 2.0 (DEEPVOICE)</span>
                             <span class="detail-text">Мошенники используют ИИ для подделки голосов ваших родственников. Если близкий просит деньги — обязательно перезвоните ему лично.</span>
                         </div>
                     </div>
-                    <div class="detail-row" style="margin-top:10px;">
-                        <div class="detail-indicator" style="background:#fbbf24;box-shadow:0 0 10px #fbbf24;"></div>
+                    <div class="detail-row" style="margin-top: 10px;">
+                        <div class="detail-indicator" style="background: #fbbf24; box-shadow: 0 0 10px #fbbf24;"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:#fbbf24;">QR-ФИШИНГ (КВИШИНГ)</span>
-                            <span class="detail-text">Размещение поддельных QR-кодов поверх настоящих. Всегда проверяйте URL-адрес после сканирования кода камерой.</span>
+                            <span class="detail-label" style="color: #fbbf24;">QR-ФИШИНГ (КВИШИНГ)</span>
+                            <span class="detail-text">Размещение поддельных QR-кодов поверх настоящих (на квитанциях, самокатах). Всегда проверяйте URL-адрес после сканирования кода камерой.</span>
                         </div>
                     </div>
-                    <div class="detail-row" style="margin-top:10px;">
-                        <div class="detail-indicator" style="background:#a78bfa;box-shadow:0 0 10px #a78bfa;"></div>
+                    <div class="detail-row" style="margin-top: 10px;">
+                        <div class="detail-indicator" style="background: #a78bfa; box-shadow: 0 0 10px #a78bfa;"></div>
                         <div class="detail-info">
-                            <span class="detail-label" style="color:#a78bfa;">АТАКА ГОМОГРАФОВ (PUNYCODE)</span>
-                            <span class="detail-text">Использование визуально похожих букв из разных алфавитов. Для браузера это разные сайты!</span>
+                            <span class="detail-label" style="color: #a78bfa;">АТАКА ГОМОГРАФОВ (PUNYCODE)</span>
+                            <span class="detail-text">Использование визуально похожих букв из разных алфавитов (например, латинская 'а' и кириллическая 'а'). Для браузера это разные сайты!</span>
                         </div>
                     </div>
                 </div>
@@ -1324,23 +1618,23 @@ HTML_LAYOUT = '''
                     <button class="tab-btn" id="tab2" onclick="switchTest(2)">ГРАМОТНОСТЬ</button>
                 </div>
                 <div id="game-header">
-                    <h4 class="shimmer-text" style="margin:0 0 15px;font-size:18px;">🎮 Кибер-Экзамен</h4>
-                    <button class="btn-scan" id="start-game" style="width:100%;padding:15px;">НАЧАТЬ ТЕСТ</button>
+                    <h4 class="shimmer-text" style="margin:0 0 15px; font-size: 18px;">🎮 Кибер-Экзамен</h4>
+                    <button class="btn-scan" id="start-game" style="width:100%; padding: 15px;">НАЧАТЬ ТЕСТ</button>
                 </div>
                 <div id="quiz-area" class="hidden">
                     <div id="quiz-container">
-                        <p id="question-num" class="shimmer-text" style="font-size:12px;margin-bottom:8px;"></p>
+                        <p id="question-num" class="shimmer-text" style="font-size:12px; margin-bottom: 8px;"></p>
                         <div id="options"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="memo-box active" style="margin-top:20px;">
+            <div class="memo-box active" style="margin-top: 20px;">
                 <div class="memo-header"><span class="shimmer-text">🤖 ИИ-Помощник CyberShield</span></div>
                 <div class="memo-content" style="padding-bottom:20px;">
-                    <p style="font-size:12px;margin-bottom:10px;">Спросите нашего ИИ (Groq), как защититься от угроз или что делать в подозрительной ситуации.</p>
-                    <div id="helper-chat-box" class="cyber-logs" style="height:180px;background:rgba(0,0,0,0.4);margin-bottom:10px;display:flex;flex-direction:column;gap:8px;">
-                        <div style="color:var(--accent-frost);font-size:12px;">ИИ: Привет! Напиши мне свою проблему, и я подскажу, как обезопасить свои данные.</div>
+                    <p style="font-size: 12px; margin-bottom: 10px;">Спросите нашего ИИ (Groq), как защититься от угроз или что делать в подозрительной ситуации.</p>
+                    <div id="helper-chat-box" class="cyber-logs" style="height: 180px; background: rgba(0,0,0,0.4); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="color:var(--accent-frost); font-size:12px;">ИИ: Привет! Напиши мне свою проблему, и я подскажу, как обезопасить свои данные.</div>
                     </div>
                     <div class="input-wrapper" style="margin-top:0;">
                         <input type="text" id="helper-input" placeholder="Ваш вопрос...">
@@ -1350,27 +1644,29 @@ HTML_LAYOUT = '''
             </div>
             
             <div class="game-section" id="sim-root">
-                <h4 class="shimmer-text" style="margin:0 0 5px;font-size:18px;text-align:center;">🔥 ЗОНА СИМУЛЯЦИЙ</h4>
-                <p style="font-size:11px;color:var(--text-main);opacity:0.7;margin-bottom:15px;text-align:center;">Тренировка противодействия реальным угрозам с ИИ Groq</p>
+                <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 18px; text-align: center;">🔥 ЗОНА СИМУЛЯЦИЙ</h4>
+                <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px; text-align: center;">Тренировка противодействия реальным угрозам с ИИ Groq</p>
+                
                 <div id="sim-selector">
                     <div class="sim-grid">
                         <div class="sim-card" onclick="openSimulation('Социальная инженерия')">
-                            <span style="font-size:24px;display:block;margin-bottom:5px;">🎭</span>
-                            <b style="font-size:12px;color:var(--accent-berry);">СОЦ. ИНЖЕНЕРИЯ</b>
+                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">🎭</span>
+                            <b style="font-size: 12px; color: var(--accent-berry);">СОЦ. ИНЖЕНЕРИЯ</b>
                         </div>
                         <div class="sim-card" onclick="openSimulation('Техподдержка')">
-                            <span style="font-size:24px;display:block;margin-bottom:5px;">👨‍💻</span>
-                            <b style="font-size:12px;color:var(--accent-berry);">ТЕХПОДДЕРЖКА</b>
+                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">👨‍💻</span>
+                            <b style="font-size: 12px; color: var(--accent-berry);">ТЕХПОДДЕРЖКА</b>
                         </div>
                         <div class="sim-card" onclick="openSimulation('Шантаж')">
-                            <span style="font-size:24px;display:block;margin-bottom:5px;">🔒</span>
-                            <b style="font-size:12px;color:var(--accent-berry);">ШАНТАЖ</b>
+                            <span style="font-size: 24px; display: block; margin-bottom: 5px;">🔒</span>
+                            <b style="font-size: 12px; color: var(--accent-berry);">ШАНТАЖ</b>
                         </div>
                     </div>
-                    <div style="text-align:center;">
-                        <p style="font-size:13px;margin-bottom:15px;">Наш ИИ будет писать как реальный мошенник. Твоя цель — не передать личные данные и правильно завершить разговор.</p>
+                    <div style="text-align: center;">
+                        <p style="font-size: 13px; margin-bottom: 15px;">Наш ИИ будет писать как реальный мошенник. Твоя цель — не передать личные данные и правильно завершить разговор.</p>
                     </div>
                 </div>
+
                 <div id="sim-chat" class="hidden">
                     <div class="chat-container">
                         <div class="chat-header shimmer-text">ДИАЛОГ: НЕИЗВЕСТНЫЙ АБОНЕНТ</div>
@@ -1380,470 +1676,783 @@ HTML_LAYOUT = '''
                             <button class="chat-send-btn" onclick="sendSimMessageReq()">➤</button>
                         </div>
                     </div>
-                    <button class="btn-scan" onclick="closeSim()" style="width:100%;margin-top:15px;background:transparent;border:1px solid var(--accent-berry);color:var(--text-main);">ПРЕРВАТЬ СИМУЛЯЦИЮ</button>
+                    <button class="btn-scan" onclick="closeSim()" style="width: 100%; margin-top: 15px; background: transparent; border: 1px solid var(--accent-berry); color: var(--text-main);">ПРЕРВАТЬ СИМУЛЯЦИЮ</button>
                 </div>
             </div>
         </div>
 
-        <!-- ============================= ПАРОЛЬНЫЙ СТРАЖ ============================= -->
-        <div id="page-password" class="page-content" style="display:none;opacity:0;">
+        <div id="page-password" class="page-content" style="display: none; opacity: 0;">
             <div class="search-card">
                 <h1 class="logo-main shimmer-text"><span>🔑</span> Парольный Страж</h1>
-                <p style="color:#cbd5e1;font-size:14px;">Криптографический анализ надёжности паролей</p>
-                <div class="input-wrapper" style="margin-top:20px;">
-                    <input type="text" id="password-input" placeholder="Введите пароль для анализа" autocomplete="off">
+                <p style="color: #cbd5e1; font-size: 14px;">Анализ криптостойкости пароля в реальном времени</p>
+                <div class="input-wrapper">
+                    <input type="text" id="password-input" placeholder="Введите пароль для проверки" autocomplete="off">
+                    <button type="button" class="btn-scan" onclick="renderPasswordReport(document.getElementById('password-input').value)">ПРОВЕРИТЬ</button>
                 </div>
-            </div>
-
-            <div id="password-report" style="display:none;">
-                <div class="report-card">
-                    <h3 class="shimmer-text" style="text-align:center;margin-top:0;">📊 АНАЛИЗ ПАРОЛЯ</h3>
-                    <div class="pw-stats">
-                        <div class="pw-stat"><span class="pw-stat-val" id="pw-length-val">0</span><span class="pw-stat-label">Символов</span></div>
-                        <div class="pw-stat"><span class="pw-stat-val" id="pw-entropy-val">0</span><span class="pw-stat-label">Бит энтропии</span></div>
-                        <div class="pw-stat"><span class="pw-stat-val" id="pw-time-val">—</span><span class="pw-stat-label">Время взлома</span></div>
-                    </div>
-                    <p id="password-result-text" style="text-align:center;font-size:14px;margin:0 0 18px;"></p>
-                    <div class="pw-rules">
-                        <div class="pw-rule" data-rule="length8"><span class="pw-rule-icon"></span>Минимум 8 символов</div>
-                        <div class="pw-rule" data-rule="length12"><span class="pw-rule-icon"></span>Минимум 12 символов</div>
-                        <div class="pw-rule" data-rule="upper"><span class="pw-rule-icon"></span>Заглавные буквы (A-Z)</div>
-                        <div class="pw-rule" data-rule="lower"><span class="pw-rule-icon"></span>Строчные буквы (a-z)</div>
-                        <div class="pw-rule" data-rule="digit"><span class="pw-rule-icon"></span>Цифры (0-9)</div>
-                        <div class="pw-rule" data-rule="special"><span class="pw-rule-icon"></span>Спецсимволы (!@#$...)</div>
-                        <div class="pw-rule" data-rule="nocommon"><span class="pw-rule-icon"></span>Не из списка утечек</div>
-                    </div>
-                </div>
+                <p style="font-size: 11px; color: var(--text-main); opacity: 0.6; margin-top: 12px;">Данные не сохраняются и не покидают браузер.</p>
             </div>
 
             <div class="generator-card">
-                <h4>🎲 ГЕНЕРАТОР ПАРОЛЕЙ</h4>
-                <p>Создайте криптографически стойкий пароль одним нажатием</p>
-                <button class="btn-generate" onclick="generateStrongPassword()">СГЕНЕРИРОВАТЬ НАДЁЖНЫЙ ПАРОЛЬ</button>
+                <h4 class="shimmer-text">⚡ ГЕНЕРАТОР НАДЁЖНОГО ПАРОЛЯ</h4>
+                <p>Создайте безопасный пароль из 16 символов в один клик. Готовый пароль сразу появится в поле выше с полным разбором стойкости.</p>
+                <button type="button" class="btn-generate" onclick="generateStrongPassword()">ГЕНЕРАЦИЯ</button>
             </div>
 
-            <div class="home-info-block" style="margin-top:20px;">
-                <h4 class="shimmer-text">🔐 Правила создания паролей</h4>
-                <ul>
-                    <li>Используйте разные пароли для каждого сервиса.</li>
-                    <li>Не используйте личные данные: имя, дату рождения.</li>
-                    <li>Минимальная длина — 12 символов для важных аккаунтов.</li>
-                    <li>Храните пароли в надёжном менеджере (Bitwarden, KeePass).</li>
-                    <li>Включите двухфакторную аутентификацию везде, где возможно.</li>
-                </ul>
+            <div class="report-card" id="password-report" style="display:none;">
+                <h3 id="password-strength-title" class="shimmer-text" style="text-align:center; margin-top:0;">АНАЛИЗ ПАРОЛЯ</h3>
+
+                <div class="stats-grid">
+                    <div class="stat-box"><span class="stat-val" id="pw-length-val" style="color: var(--accent-frost)">0</span><span style="font-size:10px;">СИМВОЛОВ</span></div>
+                    <div class="stat-box"><span class="stat-val" id="pw-entropy-val" style="color: #fbbf24">0</span><span style="font-size:10px;">БИТ ЭНТРОПИИ</span></div>
+                    <div class="stat-box"><span class="stat-val" id="pw-time-val" style="color: var(--safe-green); font-size:14px;">мгновенно</span><span style="font-size:10px;">ВЗЛОМ</span></div>
+                </div>
+
+                <div class="detail-box safe">
+                    <div class="detail-list">
+                        <div class="detail-row pw-rule" data-rule="length8">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">МИНИМУМ 8 СИМВОЛОВ</span>
+                                <span class="detail-text">Длина — главный фактор стойкости пароля.</span>
+                            </div>
+                        </div>
+                        <div class="detail-row pw-rule" data-rule="length12">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">12+ СИМВОЛОВ (РЕКОМЕНДОВАНО)</span>
+                                <span class="detail-text">Усиленная защита от перебора по словарю.</span>
+                            </div>
+                        </div>
+                        <div class="detail-row pw-rule" data-rule="upper">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">ЗАГЛАВНЫЕ БУКВЫ (A–Z)</span>
+                                <span class="detail-text">Расширяет диапазон возможных комбинаций.</span>
+                            </div>
+                        </div>
+                        <div class="detail-row pw-rule" data-rule="lower">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">СТРОЧНЫЕ БУКВЫ (a–z)</span>
+                                <span class="detail-text">Базовый набор символов латинского алфавита.</span>
+                            </div>
+                        </div>
+                        <div class="detail-row pw-rule" data-rule="digit">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">ЦИФРЫ (0–9)</span>
+                                <span class="detail-text">Усложняет атаки на основе слов из словаря.</span>
+                            </div>
+                        </div>
+                        <div class="detail-row pw-rule" data-rule="special">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">СПЕЦИАЛЬНЫЕ СИМВОЛЫ (!@#$%)</span>
+                                <span class="detail-text">Резко увеличивает время подбора атакой.</span>
+                            </div>
+                        </div>
+                        <div class="detail-row pw-rule" data-rule="nocommon">
+                            <div class="detail-indicator"></div>
+                            <div class="detail-info">
+                                <span class="detail-label">НЕ ИЗ ТОП-СПИСКА УТЕЧЕК</span>
+                                <span class="detail-text">Пароли вроде «123456» взламываются за миг.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-box">
+                    <b class="shimmer-text" style="font-size: 11px; display: block; margin-bottom: 8px; letter-spacing: 1px;">УРОВЕНЬ ЗАЩИТЫ</b>
+                    <div id="password-result-text">Введите пароль, чтобы получить вердикт.</div>
+                </div>
             </div>
         </div>
 
+    </div>
+
+    <div class="master-footer">
+        <div class="footer-line"></div>
+        <div class="footer-rays" id="footer-rays-container"></div>
+    </div>
+
+    <div class="bottom-nav-zone">
+        <div class="ping-indicator" id="ping-indicator" title="Задержка до сервера CyberShield">
+            <span class="ping-dot" id="ping-dot"></span>
+            <span class="ping-label">PING</span>
+            <span id="ping-value">-- ms</span>
+        </div>
         <div class="system-footer">
-            CyberShield · Защита цифрового пространства · Беларусь<br>
-            <small>При поддержке МВД РБ · Управление «К»</small>
+            <span class="shimmer-text" style="font-size: 15px;">Проверено всего: {{ total_scans }} | Найдено вирусов: {{ total_threats }}</span>
+            <div style="margin-top:15px;">
+                <a href="https://mir.pravo.by/contest/KiberPravo_tvoj_shchit/" target="_blank" class="cyber-link">
+                    <h1 class="shimmer-text" style="font-size: 26px; margin: 0; letter-spacing: 4px;">#КИБЕРПРАВО</h1>
+                </a>
+            </div>
+        </div>
+        
+        <div class="nav-island">
+            <div class="nav-link shimmer-text" onclick="toggleTheme()">🌓 ТЕМА</div>
+            <div class="nav-link shimmer-text" onclick="shareSite()">🔗 ССЫЛКА</div>
         </div>
     </div>
 
     <script>
-        // === ЛУЧИ ===
-        (function buildRays(){
-            const container = document.getElementById('rays');
-            const configs = [
-                {cls:'ray',      count:18, minDur:8,  maxDur:18, minDelay:0, maxDelay:16},
-                {cls:'ray-thick',count:6,  minDur:12, maxDur:22, minDelay:0, maxDelay:20},
-                {cls:'ray-short',count:10, minDur:5,  maxDur:10, minDelay:0, maxDelay:12},
-            ];
-            const anims = ['rise','rise','rise','rise-fade-mid','rise-fade-late'];
-            configs.forEach(({cls,count,minDur,maxDur,minDelay,maxDelay})=>{
-                for(let i=0;i<count;i++){
-                    const el = document.createElement('div');
-                    el.className = cls;
-                    const dur  = (minDur  + Math.random()*(maxDur-minDur)).toFixed(2);
-                    const dlay = (minDelay + Math.random()*(maxDelay-minDelay)).toFixed(2);
-                    const left = (Math.random()*100).toFixed(1);
-                    const anim = (cls==='ray') ? anims[Math.floor(Math.random()*anims.length)] : 'rise';
-                    el.style.cssText = `left:${left}%;animation-name:${anim};animation-duration:${dur}s;animation-delay:-${dlay}s;`;
-                    container.appendChild(el);
-                }
-            });
-        })();
-
-        // === МЕНЮ ===
-        function toggleMenu(){
-            const m = document.getElementById('side-menu');
-            const h = document.getElementById('hamburger');
-            const o = document.getElementById('menu-overlay');
-            const isOpen = m.classList.toggle('active');
-            h.classList.toggle('open', isOpen);
-            o.classList.toggle('active', isOpen);
+        // --- ЛОГИКА БОКОВОГО МЕНЮ ---
+        function toggleMenu() {
+            const menu = document.getElementById('side-menu');
+            const overlay = document.getElementById('menu-overlay');
+            const btn = document.getElementById('hamburger');
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            btn.classList.toggle('open');
         }
 
-        // === ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ===
-        function switchPage(page){
-            const pages = ['home','scanner','info','password'];
-            pages.forEach(p=>{
-                const el = document.getElementById('page-'+p);
-                const mi = document.getElementById('menu-tab-'+p);
-                if(p===page){
-                    el.style.display='block';
-                    setTimeout(()=>el.style.opacity='1',10);
-                    if(mi) mi.classList.add('active');
-                } else {
-                    el.style.opacity='0';
-                    el.style.display='none';
-                    if(mi) mi.classList.remove('active');
-                }
-            });
-            const m = document.getElementById('side-menu');
-            const h = document.getElementById('hamburger');
-            const o = document.getElementById('menu-overlay');
-            m.classList.remove('active'); h.classList.remove('open'); o.classList.remove('active');
-            window.scrollTo({top:0,behavior:'smooth'});
-        }
-
-        // === АККОРДЕОН (видео/фото) ===
-        function toggleAccord(id){
+        // --- АККОРДЕОН ---
+        function toggleAccord(id) {
             const box = document.getElementById(id);
+            if (!box) return;
             box.classList.toggle('open');
         }
 
-        // === АККОРДЕОН (информация) ===
-        function toggleAccordion(id){
-            const box = document.getElementById(id);
-            box.classList.toggle('active');
-        }
-
-        // === ВЫБОР ВИДЕО ===
-        function selectVideo(btn){
-            document.querySelectorAll('.vid-tab').forEach(b=>b.classList.remove('active'));
+        function selectVideo(btn) {
+            document.querySelectorAll('.vid-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const src = btn.dataset.src;
+            const src = btn.getAttribute('data-src');
             const video = document.getElementById('main-video');
-            const source = document.getElementById('main-video-src');
-            source.src = src;
+            video.pause();
+            document.getElementById('main-video-src').src = src;
             video.load();
+            video.play().catch(() => {});
         }
 
-        // === ФОТО КАРУСЕЛЬ СО СТРЕЛКАМИ ===
-        (function setupPhotoCarousel(){
-            const track = document.getElementById('photo-track');
-            if (!track) return;
-            const cards = track.querySelectorAll('.photo-card');
-            const total = cards.length;
-            let current = 0;
-
-            function getSlideWidth(){
-                if (!cards[0]) return 0;
-                return cards[0].offsetWidth + 14;
-            }
-
-            function updateDots(){
-                document.querySelectorAll('.photo-dot').forEach((d,i)=>{
-                    d.classList.toggle('active', i===current);
-                });
-            }
-
-            function goTo(idx){
-                if (idx < 0) idx = total - 1;
-                if (idx >= total) idx = 0;
-                current = idx;
-                const w = getSlideWidth();
-                track.style.transform = 'translateX(-' + (current * w) + 'px)';
-                updateDots();
-            }
-
-            window.goToPhotoSlide = goTo;
-
-            const prev = document.getElementById('photo-prev');
-            const next = document.getElementById('photo-next');
-            if(prev) prev.addEventListener('click', ()=>goTo(current-1));
-            if(next) next.addEventListener('click', ()=>goTo(current+1));
-
-            // touch/swipe
-            let touchStartX = 0;
-            track.addEventListener('touchstart', e=>{ touchStartX = e.touches[0].clientX; },{passive:true});
-            track.addEventListener('touchend', e=>{
-                const dx = e.changedTouches[0].clientX - touchStartX;
-                if(Math.abs(dx)>40){ dx<0 ? goTo(current+1) : goTo(current-1); }
-            },{passive:true});
-
-            window.addEventListener('resize', ()=>goTo(current));
-            updateDots();
-        })();
-
-        // === МОДАЛЬНОЕ ОКНО ФОТО ===
-        function openPhotoModal(src, cap){
+        // --- ФОТО ГАЛЕРЕЯ МОДАЛЬНОЕ ОКНО ---
+        function openPhotoModal(src, caption) {
             const modal = document.getElementById('photo-modal');
             document.getElementById('photo-modal-img').src = src;
-            document.getElementById('photo-modal-cap').textContent = cap;
+            document.getElementById('photo-modal-cap').textContent = caption;
             modal.classList.add('open');
             document.body.style.overflow = 'hidden';
         }
-        function closePhotoModal(){
+        function closePhotoModal() {
             document.getElementById('photo-modal').classList.remove('open');
             document.body.style.overflow = '';
         }
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePhotoModal(); });
 
-        // === ЗАГРУЗКА ===
-        function showLoading(){
-            document.getElementById('loading-overlay').style.display='block';
+        // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ СТРАНИЦ ---
+        function switchPage(pageId) {
+            const pages = ['home', 'scanner', 'info', 'password'];
+            
+            pages.forEach(p => {
+                const tab = document.getElementById('menu-tab-' + p);
+                const page = document.getElementById('page-' + p);
+                
+                if (p === pageId) {
+                    if (!tab.classList.contains('active')) {
+                        tab.classList.add('active');
+                        page.style.display = 'block';
+                        page.style.transition = 'none';
+                        page.style.opacity = '0';
+                        setTimeout(() => {
+                            page.style.transition = 'opacity 0.4s var(--smooth)';
+                            page.style.opacity = '1';
+                        }, 50);
+                    }
+                } else {
+                    tab.classList.remove('active');
+                    page.style.display = 'none';
+                    page.style.opacity = '0';
+                }
+            });
         }
 
-        // === ГОЛОС ===
-        function speakText(){
-            const text = document.getElementById('ai-verdict-text')?.innerText || '';
-            if(text && 'speechSynthesis' in window){
-                window.speechSynthesis.cancel();
-                const utt = new SpeechSynthesisUtterance(text);
-                utt.lang='ru-RU'; utt.rate=0.95;
-                window.speechSynthesis.speak(utt);
-            }
-        }
-
-        // === РАДАР ЛОГИ ===
-        function addRadarLog(msg, type='info'){
+        // --- ЛОГИКА РЕАЛЬНОГО РАДАРА ---
+        function addRadarLog(msg, type='safe') {
             const logs = document.getElementById('cyber-logs');
             if(!logs) return;
-            const colors = {info:'var(--accent-frost)', safe:'var(--safe-green)', danger:'var(--danger-red)', warn:'#fbbf24'};
-            const line = document.createElement('div');
-            line.style.cssText = `color:${colors[type]||colors.info};font-family:monospace;font-size:11px;animation:ultraEntrance 0.5s var(--ultra-smooth);`;
-            line.textContent = '> ' + msg;
-            logs.appendChild(line);
-            logs.scrollTop = logs.scrollHeight;
+            const entry = document.createElement('div');
+            const color = type === 'danger' ? 'var(--danger-red)' : type === 'warn' ? '#fbbf24' : 'var(--safe-green)';
+            entry.style.color = color;
+            entry.style.fontFamily = "monospace";
+            entry.style.fontSize = "11px";
+            entry.style.marginTop = "6px";
+            const timeStr = new Date().toLocaleTimeString();
+            entry.innerText = `> [${timeStr}] ${msg}`;
+            logs.insertBefore(entry, logs.firstChild);
+            if(logs.children.length > 10) logs.removeChild(logs.lastChild);
         }
 
-        // === ТЕСТ ===
+        {% if verdict_text %}
+            const isDanger = {{ 'true' if stats and stats.malicious > 0 else 'false' }};
+            const msg = isDanger ? "УГРОЗА ОБНАРУЖЕНА: {{ request.form.get('url', '')[:20] }}..." : "URL БЕЗОПАСЕН: {{ request.form.get('url', '')[:20] }}...";
+            addRadarLog(msg, isDanger ? 'danger' : 'safe');
+        {% endif %}
+
+        // --- НАЧАЛЬНАЯ ВКЛАДКА: после проверки ссылки остаёмся на сканере ---
+        var INITIAL_PAGE = "{{ current_page or 'home' }}";
+        if (INITIAL_PAGE && INITIAL_PAGE !== 'home') {
+            // снять active с home заранее, чтобы switchPage не упал
+            switchPage(INITIAL_PAGE);
+        }
+
+        // --- ЛУЧИ ФОНА ---
+        const raysContainer = document.getElementById('rays');
+        // Основные тонкие лучи: 25 шт, разные варианты гашения, НИКОГДА не гаснут в начале
+        const fadeVariants = ['rise', 'rise', 'rise', 'rise-fade-late', 'rise-fade-mid'];
+        for (let i = 0; i < 25; i++) {
+            const ray = document.createElement('div'); ray.className = 'ray';
+            ray.style.left = Math.random() * 100 + '%';
+            const dur = (Math.random() * 2.6 + 4.2);
+            ray.style.animationDuration = dur.toFixed(2) + 's';
+            ray.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
+            ray.style.opacity = (Math.random() * 0.55 + 0.35).toFixed(2);
+            const variant = fadeVariants[Math.floor(Math.random() * fadeVariants.length)];
+            ray.style.animationName = variant;
+            // лёгкая вариация высоты
+            ray.style.height = (140 + Math.random() * 100) + 'px';
+            raysContainer.appendChild(ray);
+        }
+        // Толстые светящиеся лучи: 4 шт
+        for (let i = 0; i < 4; i++) {
+            const rt = document.createElement('div'); rt.className = 'ray-thick';
+            rt.style.left = (Math.random() * 92 + 4) + '%';
+            rt.style.animationDuration = (Math.random() * 3 + 6.5).toFixed(2) + 's';
+            rt.style.animationDelay = (Math.random() * 7).toFixed(2) + 's';
+            rt.style.opacity = (Math.random() * 0.35 + 0.55).toFixed(2);
+            rt.style.height = (220 + Math.random() * 120) + 'px';
+            // часть гаснет посередине, часть долетает наверх — но никогда не в начале
+            if (Math.random() < 0.4) rt.style.animationName = 'rise-fade-late';
+            raysContainer.appendChild(rt);
+        }
+        // Несколько коротких ярких вспышек
+        for (let i = 0; i < 3; i++) {
+            const rayShort = document.createElement('div'); rayShort.className = 'ray-short';
+            rayShort.style.left = (Math.random() * 60 + 20) + '%';
+            rayShort.style.animationDuration = (Math.random() * 1.5 + 3) + 's';
+            rayShort.style.animationDelay = Math.random() * 3 + 's';
+            raysContainer.appendChild(rayShort);
+        }
+
+        const frc = document.getElementById('footer-rays-container');
+        for(let i=0; i<20; i++) {
+            const r = document.createElement('div');
+            r.className = 'footer-ray';
+            r.style.left = Math.random() * 100 + '%';
+            r.style.animationDelay = Math.random() * 2 + 's';
+            frc.appendChild(r);
+        }
+
+        function speakText() {
+            const text = document.getElementById('ai-verdict-text').innerText;
+            const btn = document.getElementById('speak-btn');
+            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); btn.classList.remove('playing'); return; }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ru-RU';
+            utterance.onstart = () => btn.classList.add('playing');
+            utterance.onend = () => btn.classList.remove('playing');
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleAccordion(id) { document.getElementById(id).classList.toggle('active'); }
+        
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+
+        function shareSite() { navigator.clipboard.writeText(window.location.href).then(() => alert("Ссылка скопирована!")); }
+
+        function showLoading() { 
+            document.getElementById('check-form').style.display = 'none';
+            document.getElementById('loading-overlay').style.display = 'block';
+        }
+
+        // --- ЛОГИКА ТЕСТА ПРОТИВОДЕЙСТВИЯ (Кибер-Экзамен) ---
         const questions1 = [
-            {q:"Банк просит PIN по телефону?",win:"Положить трубку",lose:"Назвать PIN"},
-            {q:"Незнакомая ссылка от друга в мессенджере?",win:"Проверить в CyberShield",lose:"Открыть сразу"},
-            {q:"Сайт просит отключить антивирус?",win:"Закрыть страницу",lose:"Отключить антивирус"},
-            {q:"Выиграл приз, нужно перевести «комиссию»?",win:"Игнорировать",lose:"Перевести деньги"},
-            {q:"HTTPS на сайте — значит он безопасен?",win:"Нет, это не гарантия",lose:"Да, полностью безопасен"},
-            {q:"Незнакомец просит реквизиты карты?",win:"Отказать",lose:"Сообщить"},
-            {q:"Пришло письмо «вы выиграли iPhone»?",win:"Удалить как спам",lose:"Перейти по ссылке"},
-            {q:"Сайт банка выглядит как настоящий, но URL другой?",win:"Закрыть — это фишинг",lose:"Войти в аккаунт"},
-            {q:"Звонят из «службы безопасности» банка?",win:"Перезвонить самому на официальный номер",lose:"Сообщить данные карты"},
-            {q:"Приложение просит доступ к SMS?",win:"Отказать подозрительному приложению",lose:"Разрешить всегда"},
+            {q: "Минсктранс (Официальный сайт):", win: "minsktrans.by", lose: "minsk-trans.by"},
+            {q: "БелЖД (Покупка билетов):", win: "rw.by", lose: "belrailway.by"},
+            {q: "Белтелеком (Услуги связи):", win: "beltelecom.by", lose: "bel-telecom.by"},
+            {q: "21vek (Гипермаркет):", win: "21vek.by", lose: "21-vek.by"},
+            {q: "МВД Беларуси (УВД):", win: "mvd.gov.by", lose: "milicija.by"},
+            {q: "Альфа-Банк Беларусь:", win: "alfabank.by", lose: "alfa-bank-login.by"},
+            {q: "Wildberries (Официально):", win: "wildberries.by", lose: "wb-sale.by"},
+            {q: "Onliner (Портал):", win: "onliner.by", lose: "online-by.com"},
+            {q: "Беларусбанк:", win: "belarusbank.by", lose: "belarus-bank.org"},
+            {q: "Kufar (Объявления):", win: "kufar.by", lose: "kufar-pay.by"}
         ];
+        
         const questions2 = [
-            {q:"Что такое фишинг?",win:"Поддельный сайт для кражи данных",lose:"Вид рыбной ловли"},
-            {q:"Что такое двухфакторная аутентификация?",win:"Дополнительный код подтверждения входа",lose:"Два пароля для почты"},
-            {q:"Что означает HTTPS?",win:"Шифрованное соединение с сайтом",lose:"Сайт проверен государством"},
-            {q:"Что такое троян?",win:"Вредонос под видом легального ПО",lose:"Антивирус Греции"},
-            {q:"Что такое социальная инженерия?",win:"Манипуляции для получения данных",lose:"Профессия инженера"},
-            {q:"Что делать при утечке пароля?",win:"Срочно сменить и включить 2FA",lose:"Подождать и посмотреть"},
-            {q:"Что такое VPN?",win:"Шифрованный туннель для интернет-трафика",lose:"Вирус защиты"},
-            {q:"Что такое ренсомвер?",win:"Вымогатель, шифрующий файлы",lose:"Антиспам-фильтр"},
-            {q:"Как проверить возраст домена?",win:"Через WHOIS-сервис",lose:"Посмотреть в браузере"},
-            {q:"Что такое стиллер?",win:"ПО для кражи паролей и cookies",lose:"Программа для уборки"},
+            {q: "СМС: «Ваша карта заблокирована». Ваши действия:", win: "Зайти в официальное приложение", lose: "Перейти по ссылке в СМС"},
+            {q: "Просят код из СМС для подтверждения. Ваши действия:", win: "Никогда не вводить на чужих сайтах", lose: "Ввести код быстро"},
+            {q: "Браузер пишет: «Сайт небезопасен». Ваши действия:", win: "Закрыть страницу", lose: "Нажать 'Игнорировать'"},
+            {q: "Друг просит проголосовать в ТГ. Ваши действия:", win: "Позвонить другу лично", lose: "Сразу перейти и ввести код"},
+            {q: "Звонят из «Безопасности банка». Ваши действия:", win: "Сбросить вызов", lose: "Продиктовать данные карты"},
+            {q: "Вам прислали файл «Photo.exe». Ваши действия:", win: "Удалить, не открывая", lose: "Открыть и посмотреть фото"},
+            {q: "Создание пароля для всех сайтов. Ваши действия:", win: "Сделать разным везде", lose: "Один сложный для удобства"},
+            {q: "Предложение двухфакторной защиты. Ваши действия:", win: "Включить везде, где можно", lose: "Пропустить для скорости"},
+            {q: "Предлагают бесплатную валюту в играх. Ваши действия:", win: "Закрыть и не вводить данные", lose: "Ввести логин и пароль"},
+            {q: "Чужой компьютер просит «Запомнить пароль». Ваши действия:", win: "Нажать 'Никогда'", lose: "Нажать 'Да'"}
         ];
-        let activeSet=[...questions1], currentQ=0, score=0, canClick=true;
-        function switchTest(num){
-            document.getElementById('tab1').classList.toggle('active',num===1);
-            document.getElementById('tab2').classList.toggle('active',num===2);
-            activeSet=(num===1)?[...questions1]:[...questions2];
+
+        let activeSet = [], currentQ = 0, score = 0, canClick = true;
+
+        function switchTest(num) {
+            document.getElementById('tab1').classList.toggle('active', num === 1);
+            document.getElementById('tab2').classList.toggle('active', num === 2);
+            activeSet = (num === 1) ? [...questions1] : [...questions2];
             resetGameUI();
         }
-        function initGame(){
-            if(activeSet.length===0) activeSet=[...questions1];
-            activeSet.sort(()=>Math.random()-0.5);
-            currentQ=0; score=0; canClick=true;
-            resetGameUI();
-            document.getElementById('game-header').style.display='none';
+
+        function initGame() {
+            if (activeSet.length === 0) activeSet = [...questions1];
+            activeSet.sort(() => Math.random() - 0.5);
+            currentQ = 0; score = 0; canClick = true;
+            resetGameUI(); 
+            document.getElementById('game-header').style.display = 'none';
             document.getElementById('quiz-area').classList.remove('hidden');
             showQuestion();
         }
-        document.getElementById('start-game').onclick=initGame;
-        function showQuestion(){
-            canClick=true;
-            const q=activeSet[currentQ];
-            document.getElementById('question-num').innerText=`ШАГ ${currentQ+1} ИЗ ${activeSet.length}`;
-            const options=[{t:q.win,w:true},{t:q.lose,w:false}].sort(()=>Math.random()-0.5);
-            document.getElementById('options').innerHTML=`
+
+        document.getElementById('start-game').onclick = initGame;
+
+        function showQuestion() {
+            canClick = true;
+            const q = activeSet[currentQ];
+            document.getElementById('question-num').innerText = `ШАГ ${currentQ + 1} ИЗ ${activeSet.length}`;
+            const options = [{t: q.win, w: true}, {t: q.lose, w: false}].sort(() => Math.random() - 0.5);
+            const area = document.getElementById('options');
+            area.innerHTML = `
                 <div class="slide-left-to-right">
-                    <p style="font-weight:bold;margin-bottom:15px;font-size:15px;">${q.q}</p>
-                    <div class="quiz-option" onclick="handleSelect(this,${options[0].w})">${options[0].t}</div>
-                    <div class="quiz-option" onclick="handleSelect(this,${options[1].w})">${options[1].t}</div>
+                    <p style="font-weight:bold; margin-bottom:15px; font-size:15px;">${q.q}</p>
+                    <div class="quiz-option" onclick="handleSelect(this, ${options[0].w})">${options[0].t}</div>
+                    <div class="quiz-option" onclick="handleSelect(this, ${options[1].w})">${options[1].t}</div>
+                </div>
+            `;
+        }
+
+        function handleSelect(el, isCorrect) {
+            if (!canClick) return;
+            canClick = false; 
+            if (isCorrect) { score++; el.classList.add('correct'); } else { el.classList.add('wrong'); }
+            setTimeout(() => {
+                const slideWrapper = document.querySelector('.slide-left-to-right');
+                if(slideWrapper) {
+                    slideWrapper.style.transition = 'all 0.4s var(--smooth)';
+                    slideWrapper.style.transform = 'translateX(150%)'; 
+                    slideWrapper.style.opacity = '0';
+                }
+                setTimeout(() => {
+                    if (currentQ < activeSet.length - 1) { currentQ++; showQuestion(); } else { finishQuiz(); }
+                }, 400); 
+            }, 400); 
+        }
+
+        function finishQuiz() {
+            let rank = "Новичок 🛡️";
+            if(score >= 4) rank = "Ученик 🔍";
+            if(score >= 7) rank = "Специалист 🧠";
+            if(score == 10) rank = "Кибер-Эксперт 👑";
+            addRadarLog(`ТЕСТ ЗАВЕРШЕН. РЕЗУЛЬТАТ: ${score}/10. РАНГ: ${rank}`, score >= 7 ? 'safe' : 'warn');
+            document.getElementById('quiz-area').innerHTML = `
+                <div style="text-align:center; animation: ultraEntrance 0.8s var(--ultra-smooth);">
+                    <h4 class="shimmer-text" style="font-size:22px; margin-bottom:15px;">ИТОГ: ${score}/${activeSet.length}</h4>
+                    <p style="font-size:16px; margin-bottom:25px;">Твой ранг:<br><b style="font-size:18px;">${rank}</b></p>
+                    <button id="restart-btn" class="btn-scan" style="width:100%; padding: 15px;">ЗАНОВО</button>
                 </div>`;
+            document.getElementById('restart-btn').onclick = initGame;
         }
-        function handleSelect(el,isCorrect){
-            if(!canClick) return;
-            canClick=false;
-            if(isCorrect){score++;el.classList.add('correct');}else{el.classList.add('wrong');}
-            setTimeout(()=>{
-                const sw=document.querySelector('.slide-left-to-right');
-                if(sw){sw.style.transition='all 0.4s var(--smooth)';sw.style.transform='translateX(150%)';sw.style.opacity='0';}
-                setTimeout(()=>{ if(currentQ<activeSet.length-1){currentQ++;showQuestion();}else{finishQuiz();} },400);
-            },400);
-        }
-        function finishQuiz(){
-            let rank="Новичок 🛡️";
-            if(score>=4)rank="Ученик 🔍";
-            if(score>=7)rank="Специалист 🧠";
-            if(score==10)rank="Кибер-Эксперт 👑";
-            addRadarLog(`ТЕСТ ЗАВЕРШЕН. РЕЗУЛЬТАТ: ${score}/10. РАНГ: ${rank}`,score>=7?'safe':'warn');
-            document.getElementById('quiz-area').innerHTML=`
-                <div style="text-align:center;animation:ultraEntrance 0.8s var(--ultra-smooth);">
-                    <h4 class="shimmer-text" style="font-size:22px;margin-bottom:15px;">ИТОГ: ${score}/${activeSet.length}</h4>
-                    <p style="font-size:16px;margin-bottom:25px;">Твой ранг:<br><b style="font-size:18px;">${rank}</b></p>
-                    <button id="restart-btn" class="btn-scan" style="width:100%;padding:15px;">ЗАНОВО</button>
-                </div>`;
-            document.getElementById('restart-btn').onclick=initGame;
-        }
-        function resetGameUI(){
-            document.getElementById('game-header').style.display='block';
+
+        function resetGameUI() {
+            document.getElementById('game-header').style.display = 'block';
             document.getElementById('quiz-area').classList.add('hidden');
-            document.getElementById('quiz-area').innerHTML='<div id="quiz-container"><p id="question-num" class="shimmer-text"></p><div id="options"></div></div>';
+            document.getElementById('quiz-area').innerHTML = '<div id="quiz-container"><p id="question-num" class="shimmer-text"></p><div id="options"></div></div>';
         }
 
-        if(localStorage.getItem('theme')==='light') document.body.classList.add('light-mode');
+        if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
 
-        // === ЛЕНТА НОВОСТЕЙ ===
+        // --- НОВОСТНАЯ ЛЕНТА: АВТО-ПРОКРУТКА + СТРЕЛКИ + ПЕРЕТАСКИВАНИЕ ---
         (function setupNewsTicker(){
-            const wrap=document.getElementById('news-ticker');
-            const track=document.getElementById('news-track');
-            if(!wrap||!track) return;
-            const originals=Array.from(track.children);
-            originals.forEach(el=>{ const clone=el.cloneNode(true);clone.setAttribute('aria-hidden','true');track.appendChild(clone); });
-            let pos=0, halfWidth=0, autoTimer=null, isHover=false, isDragging=false;
-            let startX=0, startPos=0, pointerMoved=0;
-            const DRAG_THRESHOLD=6, TILE_STEP=284, AUTO_INTERVAL_MS=35, AUTO_SPEED_PX=0.6;
-            function recalc(){ halfWidth=track.scrollWidth/2; }
-            recalc(); window.addEventListener('resize',recalc);
-            function applyTransform(){
-                if(halfWidth>0){ if(pos<=-halfWidth)pos+=halfWidth; if(pos>0)pos-=halfWidth; }
-                track.style.transform='translateX('+pos+'px)';
+            const wrap = document.getElementById('news-ticker');
+            const track = document.getElementById('news-track');
+            if (!wrap || !track) return;
+
+            const originals = Array.from(track.children);
+            originals.forEach(el => {
+                const clone = el.cloneNode(true);
+                clone.setAttribute('aria-hidden', 'true');
+                track.appendChild(clone);
+            });
+
+            let pos = 0;            // текущее смещение в px (отрицательное)
+            let halfWidth = 0;
+            let autoTimer = null;
+            let isHover = false;
+            let isDragging = false;
+            let startX = 0;
+            let startPos = 0;
+            let pointerMoved = 0;
+            const DRAG_THRESHOLD = 6;
+            const TILE_STEP = 284;  // 270 + 14 gap (на мобильном чуть меньше, но и шаг ок)
+            const AUTO_INTERVAL_MS = 35; // плавный сдвиг
+            const AUTO_SPEED_PX = 0.6;   // px за тик
+
+            function recalc() {
+                halfWidth = track.scrollWidth / 2;
             }
-            function tick(){ if(isHover||isDragging)return; pos-=AUTO_SPEED_PX; track.style.transition='none'; applyTransform(); }
-            function startAuto(){ if(autoTimer)return; autoTimer=setInterval(tick,AUTO_INTERVAL_MS); }
-            wrap.addEventListener('mouseenter',()=>{isHover=true;}); wrap.addEventListener('mouseleave',()=>{isHover=false;});
-            const prev=document.getElementById('news-prev'); const next=document.getElementById('news-next');
-            function smoothJump(delta){ track.style.transition='transform 0.6s var(--ultra-smooth)'; pos+=delta; applyTransform(); setTimeout(()=>{track.style.transition='none';},650); }
-            if(prev)prev.addEventListener('click',()=>smoothJump(TILE_STEP));
-            if(next)next.addEventListener('click',()=>smoothJump(-TILE_STEP));
-            function onDown(e){ isDragging=true; pointerMoved=0; startX=(e.touches?e.touches[0].clientX:e.clientX); startPos=pos; track.classList.add('is-dragging'); track.style.transition='none'; }
-            function onMove(e){ if(!isDragging)return; const x=(e.touches?e.touches[0].clientX:e.clientX); const dx=x-startX; pointerMoved=Math.abs(dx); pos=startPos+dx; applyTransform(); if(pointerMoved>DRAG_THRESHOLD&&e.cancelable)e.preventDefault(); }
-            function onUp(){ if(!isDragging)return; isDragging=false; track.classList.remove('is-dragging'); }
-            track.querySelectorAll('a.news-tile').forEach(a=>{ a.addEventListener('click',function(ev){ if(pointerMoved>DRAG_THRESHOLD){ev.preventDefault();ev.stopPropagation();} }); });
-            track.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
-            track.addEventListener('touchstart',onDown,{passive:true}); track.addEventListener('touchmove',onMove,{passive:false}); track.addEventListener('touchend',onUp);
-            setTimeout(()=>{ recalc(); startAuto(); },200);
+            recalc();
+            window.addEventListener('resize', recalc);
+
+            function applyTransform() {
+                if (halfWidth > 0) {
+                    if (pos <= -halfWidth) pos += halfWidth;
+                    if (pos > 0) pos -= halfWidth;
+                }
+                track.style.transform = 'translateX(' + pos + 'px)';
+            }
+
+            function tick() {
+                if (isHover || isDragging) return;
+                pos -= AUTO_SPEED_PX;
+                track.style.transition = 'none';
+                applyTransform();
+            }
+
+            function startAuto() {
+                if (autoTimer) return;
+                autoTimer = setInterval(tick, AUTO_INTERVAL_MS);
+            }
+            function stopAuto() {
+                if (!autoTimer) return;
+                clearInterval(autoTimer);
+                autoTimer = null;
+            }
+
+            wrap.addEventListener('mouseenter', () => { isHover = true; });
+            wrap.addEventListener('mouseleave', () => { isHover = false; });
+
+            // Стрелки
+            const prev = document.getElementById('news-prev');
+            const next = document.getElementById('news-next');
+            function smoothJump(delta){
+                track.style.transition = 'transform 0.6s var(--ultra-smooth)';
+                pos += delta;
+                applyTransform();
+                setTimeout(()=>{ track.style.transition = 'none'; }, 650);
+            }
+            if (prev) prev.addEventListener('click', () => smoothJump( TILE_STEP));
+            if (next) next.addEventListener('click', () => smoothJump(-TILE_STEP));
+
+            // Перетаскивание мышью и пальцем
+            function onDown(e) {
+                isDragging = true;
+                pointerMoved = 0;
+                startX = (e.touches ? e.touches[0].clientX : e.clientX);
+                startPos = pos;
+                track.classList.add('is-dragging');
+                track.style.transition = 'none';
+            }
+            function onMove(e) {
+                if (!isDragging) return;
+                const x = (e.touches ? e.touches[0].clientX : e.clientX);
+                const dx = x - startX;
+                pointerMoved = Math.abs(dx);
+                pos = startPos + dx;
+                applyTransform();
+                if (pointerMoved > DRAG_THRESHOLD && e.cancelable) e.preventDefault();
+            }
+            function onUp() {
+                if (!isDragging) return;
+                isDragging = false;
+                track.classList.remove('is-dragging');
+            }
+
+            track.querySelectorAll('a.news-tile').forEach(a => {
+                a.addEventListener('click', function(ev){
+                    if (pointerMoved > DRAG_THRESHOLD) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                    }
+                });
+            });
+
+            track.addEventListener('mousedown', onDown);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+            track.addEventListener('touchstart', onDown, {passive: true});
+            track.addEventListener('touchmove', onMove, {passive: false});
+            track.addEventListener('touchend', onUp);
+
+            // запускаем после небольшой задержки, чтобы layout стабилизировался
+            setTimeout(()=>{ recalc(); startAuto(); }, 200);
         })();
 
-        // === СИМУЛЯЦИЯ ===
-        let currentSimTheme="", simHistory=[], simTurn=0;
-        function openSimulation(themeName){
-            currentSimTheme=themeName;
+        // --- ЛОГИКА НОВОЙ СИМУЛЯЦИИ GROQ (ЧАТА) ---
+        let currentSimTheme = "";
+        let simHistory = [];
+        let simTurn = 0;
+        const SIM_MAX_TURNS = 4;
+        
+        function openSimulation(themeName) {
+            currentSimTheme = themeName;
             document.getElementById('sim-selector').classList.add('hidden');
             document.getElementById('sim-chat').classList.remove('hidden');
-            document.getElementById('chat-messages-box').innerHTML='';
-            document.getElementById('chat-input-area').style.display='flex';
-            simHistory=[]; simTurn=0;
-            addRadarLog(`ЗАПУСК ИИ-СИМУЛЯЦИИ: ${themeName}`,'warn');
+            document.getElementById('chat-messages-box').innerHTML = '';
+            document.getElementById('chat-input-area').style.display = 'flex';
+            simHistory = [];
+            simTurn = 0;
+            addRadarLog(`ЗАПУСК ИИ-СИМУЛЯЦИИ: ${themeName}`, 'warn');
+            
             appendBotMessage("ИИ печатает...");
-            fetch('/cs/sim_chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'',history:[],theme:currentSimTheme,is_start:true,turn:0})})
-            .then(r=>r.json()).then(data=>{ const box=document.getElementById('chat-messages-box'); box.lastChild.remove(); appendBotMessage(data.reply); simHistory=data.history; simTurn=data.turn||0; })
-            .catch(()=>{ document.getElementById('chat-messages-box').lastChild.remove(); appendBotMessage("Ошибка сети. Модель недоступна."); });
-        }
-        function closeSim(){ document.getElementById('sim-chat').classList.add('hidden'); document.getElementById('sim-selector').classList.remove('hidden'); }
-        function appendBotMessage(text){ const box=document.getElementById('chat-messages-box'); const msg=document.createElement('div'); msg.className='msg bot'; msg.innerText=text; box.appendChild(msg); box.scrollTop=box.scrollHeight; }
-        function appendUserMessage(text){ const box=document.getElementById('chat-messages-box'); const msg=document.createElement('div'); msg.className='msg user'; msg.innerText=text; box.appendChild(msg); box.scrollTop=box.scrollHeight; }
-        function sendSimMessageReq(){
-            const input=document.getElementById('sim-input'); const text=input.value.trim(); if(!text)return;
-            appendUserMessage(text); input.value=''; appendBotMessage("ИИ печатает...");
-            fetch('/cs/sim_chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,history:simHistory,theme:currentSimTheme,is_start:false,turn:simTurn})})
-            .then(r=>r.json()).then(data=>{ const box=document.getElementById('chat-messages-box'); box.lastChild.remove(); simTurn=data.turn||simTurn; if(data.is_ended){appendBotMessage(data.reply);setTimeout(()=>finishChatSimFinal(data.score,null),600);}else{appendBotMessage(data.reply);simHistory=data.history;} })
-            .catch(()=>{ document.getElementById('chat-messages-box').lastChild.remove(); appendBotMessage("Произошла ошибка связи с Groq."); });
-        }
-        document.getElementById('sim-input').addEventListener('keypress',function(e){ if(e.key==='Enter')sendSimMessageReq(); });
-        function finishChatSimFinal(score,finalMsg){
-            document.getElementById('chat-input-area').style.display='none';
-            if(finalMsg)appendBotMessage(finalMsg);
-            let verdict=score>50?"✅ ВЫ СПРАВИЛИСЬ!":"❌ ДАННЫЕ СКОМПРОМЕТИРОВАНЫ!";
-            addRadarLog(`СИМУЛЯЦИЯ ЗАВЕРШЕНА. ВЫЖИВАЕМОСТЬ: ${score}%`,score>50?'safe':'danger');
-            setTimeout(()=>{
-                const box=document.getElementById('chat-messages-box');
-                const resultMsg=document.createElement('div');
-                resultMsg.style.cssText='text-align:center;padding:20px;background:rgba(0,0,0,0.4);border-radius:15px;margin-top:10px;animation:ultraEntrance 0.8s var(--ultra-smooth);';
-                resultMsg.innerHTML=`<h3 class="shimmer-text" style="margin-top:0;">${verdict}</h3><p style="font-size:24px;font-weight:bold;margin:10px 0;color:${score>50?'var(--safe-green)':'var(--danger-red)'}">${score}% УСПЕХА</p><button class="btn-scan" onclick="closeSim()" style="margin-top:10px;width:100%;">НАЗАД В МЕНЮ</button>`;
-                box.appendChild(resultMsg); box.scrollTop=box.scrollHeight;
-            },800);
+            
+            fetch('/cs/sim_chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: '', history: [], theme: currentSimTheme, is_start: true, turn: 0})
+            }).then(r=>r.json()).then(data => {
+                const box = document.getElementById('chat-messages-box');
+                box.lastChild.remove();
+                appendBotMessage(data.reply);
+                simHistory = data.history;
+                simTurn = data.turn || 0;
+            }).catch(e => {
+                document.getElementById('chat-messages-box').lastChild.remove();
+                appendBotMessage("Ошибка сети. Модель недоступна.");
+            });
         }
 
-        // === ИИ ПОМОЩНИК ===
-        let helperHistory=[];
-        function sendHelperMessage(){
-            const input=document.getElementById('helper-input'); const text=input.value.trim(); if(!text)return;
-            const box=document.getElementById('helper-chat-box');
-            box.innerHTML+=`<div style="color:var(--safe-green);font-size:12px;"><b>Вы:</b> ${text}</div>`;
-            input.value=''; box.scrollTop=box.scrollHeight;
-            fetch('/cs/helper_chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,history:helperHistory})})
-            .then(r=>r.json()).then(data=>{ box.innerHTML+=`<div style="color:var(--accent-frost);font-size:12px;"><b>ИИ:</b> ${data.reply}</div>`; helperHistory=data.history; box.scrollTop=box.scrollHeight; })
-            .catch(()=>{ box.innerHTML+=`<div style="color:var(--danger-red);font-size:12px;">Система временно недоступна.</div>`; });
+        function closeSim() {
+            document.getElementById('sim-chat').classList.add('hidden');
+            document.getElementById('sim-selector').classList.remove('hidden');
         }
-        document.getElementById('helper-input').addEventListener('keypress',function(e){ if(e.key==='Enter')sendHelperMessage(); });
 
-        // === ПАРОЛЬНЫЙ СТРАЖ ===
-        const COMMON_PASSWORDS=new Set(["123456","123456789","12345678","12345","qwerty","password","111111","123123","abc123","1234567","000000","iloveyou","qwerty123","admin","welcome","monkey","dragon","letmein","football","passw0rd","master","pass","qazwsx","qwerty1","123qwe","ytrewq","klaster","superman","11111111","sunshine","1q2w3e4r","zxcvbnm"]);
-        function analyzePassword(pw){
-            const rules={length8:pw.length>=8,length12:pw.length>=12,upper:/[A-ZА-ЯЁ]/.test(pw),lower:/[a-zа-яё]/.test(pw),digit:/\d/.test(pw),special:/[^A-Za-zА-Яа-яЁё0-9]/.test(pw),nocommon:pw.length>0&&!COMMON_PASSWORDS.has(pw.toLowerCase())};
-            let pool=0;
-            if(rules.lower)pool+=26; if(rules.upper)pool+=26; if(rules.digit)pool+=10; if(rules.special)pool+=32;
-            const entropy=pw.length>0&&pool>0?Math.round(pw.length*Math.log2(pool)):0;
-            const guessesPerSec=1e10; const seconds=pool>0?Math.pow(pool,pw.length)/guessesPerSec:0;
-            let timeStr="мгновенно";
-            if(!rules.nocommon&&pw.length>0)timeStr="мгновенно";
-            else if(seconds<1)timeStr="мгновенно";
-            else if(seconds<60)timeStr=Math.round(seconds)+" сек";
-            else if(seconds<3600)timeStr=Math.round(seconds/60)+" мин";
-            else if(seconds<86400)timeStr=Math.round(seconds/3600)+" ч";
-            else if(seconds<31536000)timeStr=Math.round(seconds/86400)+" дн";
-            else if(seconds<31536000*1000)timeStr=Math.round(seconds/31536000)+" лет";
-            else timeStr="века";
-            const score=Object.values(rules).filter(Boolean).length;
-            let level,color;
-            if(pw.length===0){level="Введите пароль для анализа";color="var(--text-main)";}
-            else if(!rules.nocommon){level="❌ КРИТИЧНО: пароль есть в утечках, взлом мгновенный";color="var(--danger-red)";}
-            else if(score<=3){level="⚠️ СЛАБЫЙ — лёгкая мишень для атаки";color="var(--danger-red)";}
-            else if(score<=5){level="🟡 СРЕДНИЙ — приемлемо для непубличных аккаунтов";color="#fbbf24";}
-            else if(score===6){level="✅ ХОРОШИЙ — устойчив к большинству атак";color="var(--safe-green)";}
-            else{level="🛡️ КРЕПОСТЬ — высочайшая криптостойкость";color="var(--safe-green)";}
-            return{rules,entropy,timeStr,level,color};
+        function appendBotMessage(text) {
+            const box = document.getElementById('chat-messages-box');
+            const msg = document.createElement('div');
+            msg.className = 'msg bot';
+            msg.innerText = text;
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
         }
-        function renderPasswordReport(pw){
-            const report=document.getElementById('password-report');
-            if(pw.length===0){report.style.display='none';return;}
-            if(report.style.display==='none'){report.style.display='block';report.style.animation='ultraEntrance 0.6s var(--ultra-smooth)';}
-            const a=analyzePassword(pw);
-            document.getElementById('pw-length-val').innerText=pw.length;
-            document.getElementById('pw-entropy-val').innerText=a.entropy;
-            document.getElementById('pw-time-val').innerText=a.timeStr;
-            document.querySelectorAll('.pw-rule').forEach(row=>{ const r=row.dataset.rule; row.classList.toggle('active',!!a.rules[r]); });
-            const result=document.getElementById('password-result-text');
-            result.innerText=a.level; result.style.color=a.color; result.style.fontWeight='bold';
-        }
-        function generateStrongPassword(){
-            const lower="abcdefghijkmnpqrstuvwxyz",upper="ABCDEFGHJKLMNPQRSTUVWXYZ",digits="23456789",special="!@#$%^&*()_+-=[]{}";
-            const all=lower+upper+digits+special; let pw="";
-            pw+=lower[Math.floor(Math.random()*lower.length)];
-            pw+=upper[Math.floor(Math.random()*upper.length)];
-            pw+=digits[Math.floor(Math.random()*digits.length)];
-            pw+=special[Math.floor(Math.random()*special.length)];
-            for(let i=0;i<12;i++)pw+=all[Math.floor(Math.random()*all.length)];
-            pw=pw.split('').sort(()=>Math.random()-0.5).join('');
-            const input=document.getElementById('password-input'); input.value=pw; renderPasswordReport(pw); input.focus();
-        }
-        document.getElementById('password-input').addEventListener('input',function(e){ renderPasswordReport(e.target.value); });
 
-        // === ПИНГ ===
-        async function measurePing(){
-            const indicator=document.getElementById('ping-indicator'); const valueEl=document.getElementById('ping-value');
-            const start=performance.now();
-            try{
-                const res=await fetch('/cs/ping?t='+start,{cache:'no-store'});
-                if(!res.ok)throw new Error('bad');
-                const ms=Math.round(performance.now()-start);
-                valueEl.innerText=ms+' ms'; indicator.classList.remove('warn','bad');
-                if(ms>600)indicator.classList.add('bad'); else if(ms>250)indicator.classList.add('warn');
-            }catch(e){ valueEl.innerText='--- ms'; indicator.classList.remove('warn'); indicator.classList.add('bad'); }
+        function appendUserMessage(text) {
+            const box = document.getElementById('chat-messages-box');
+            const msg = document.createElement('div');
+            msg.className = 'msg user';
+            msg.innerText = text;
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
         }
-        measurePing(); setInterval(measurePing,5000);
+
+        function sendSimMessageReq() {
+            const input = document.getElementById('sim-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            appendUserMessage(text);
+            input.value = '';
+            appendBotMessage("ИИ печатает...");
+
+            fetch('/cs/sim_chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: text, history: simHistory, theme: currentSimTheme, is_start: false, turn: simTurn})
+            }).then(r=>r.json()).then(data => {
+                const box = document.getElementById('chat-messages-box');
+                box.lastChild.remove(); 
+                
+                simTurn = data.turn || simTurn;
+                if (data.is_ended) {
+                    appendBotMessage(data.reply);
+                    setTimeout(() => finishChatSimFinal(data.score, null), 600);
+                } else {
+                    appendBotMessage(data.reply);
+                    simHistory = data.history;
+                }
+            }).catch(e => {
+                document.getElementById('chat-messages-box').lastChild.remove();
+                appendBotMessage("Произошла ошибка связи с Groq.");
+            });
+        }
+
+        document.getElementById('sim-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendSimMessageReq();
+        });
+
+        function finishChatSimFinal(score, finalMsg) {
+            document.getElementById('chat-input-area').style.display = 'none';
+            if (finalMsg) appendBotMessage(finalMsg);
+            
+            let verdict = score > 50 ? "✅ ВЫ СПРАВИЛИСЬ!" : "❌ ДАННЫЕ СКОМПРОМЕТИРОВАНЫ!";
+            addRadarLog(`СИМУЛЯЦИЯ ЗАВЕРШЕНА. ВЫЖИВАЕМОСТЬ: ${score}%`, score > 50 ? 'safe' : 'danger');
+
+            setTimeout(() => {
+                const box = document.getElementById('chat-messages-box');
+                const resultMsg = document.createElement('div');
+                resultMsg.style.textAlign = 'center';
+                resultMsg.style.padding = '20px';
+                resultMsg.style.background = 'rgba(0,0,0,0.4)';
+                resultMsg.style.borderRadius = '15px';
+                resultMsg.style.marginTop = '10px';
+                resultMsg.style.animation = 'ultraEntrance 0.8s var(--ultra-smooth)';
+                resultMsg.innerHTML = `
+                    <h3 class="shimmer-text" style="margin-top:0;">${verdict}</h3>
+                    <p style="font-size:24px; font-weight:bold; margin: 10px 0; color: ${score > 50 ? 'var(--safe-green)' : 'var(--danger-red)'}">${score}% УСПЕХА</p>
+                    <button class="btn-scan" onclick="closeSim()" style="margin-top: 10px; width: 100%;">НАЗАД В МЕНЮ</button>
+                `;
+                box.appendChild(resultMsg);
+                box.scrollTop = box.scrollHeight;
+            }, 800);
+        }
+
+        // --- ЛОГИКА ИИ-ПОМОЩНИКА В ИНФОРМАЦИИ ---
+        let helperHistory = [];
+        
+        function sendHelperMessage() {
+            const input = document.getElementById('helper-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            const box = document.getElementById('helper-chat-box');
+            box.innerHTML += `<div style="color:var(--safe-green); font-size:12px;"><b>Вы:</b> ${text}</div>`;
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+            
+            fetch('/cs/helper_chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: text, history: helperHistory})
+            }).then(r=>r.json()).then(data => {
+                box.innerHTML += `<div style="color:var(--accent-frost); font-size:12px;"><b>ИИ:</b> ${data.reply}</div>`;
+                helperHistory = data.history;
+                box.scrollTop = box.scrollHeight;
+            }).catch(e => {
+                box.innerHTML += `<div style="color:var(--danger-red); font-size:12px;">Система временно недоступна. Проверьте ключ Groq API.</div>`;
+            });
+        }
+        
+        document.getElementById('helper-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendHelperMessage();
+        });
+
+        // --- ПАРОЛЬНЫЙ СТРАЖ ---
+        const COMMON_PASSWORDS = new Set([
+            "123456","123456789","12345678","12345","qwerty","password","111111","123123",
+            "abc123","1234567","000000","iloveyou","qwerty123","admin","welcome","monkey",
+            "dragon","letmein","football","passw0rd","master","pass","qazwsx","qwerty1",
+            "123qwe","ytrewq","klaster","superman","11111111","sunshine","1q2w3e4r","zxcvbnm"
+        ]);
+
+        function analyzePassword(pw) {
+            const rules = {
+                length8: pw.length >= 8,
+                length12: pw.length >= 12,
+                upper: /[A-ZА-ЯЁ]/.test(pw),
+                lower: /[a-zа-яё]/.test(pw),
+                digit: /\d/.test(pw),
+                special: /[^A-Za-zА-Яа-яЁё0-9]/.test(pw),
+                nocommon: pw.length > 0 && !COMMON_PASSWORDS.has(pw.toLowerCase())
+            };
+
+            let pool = 0;
+            if (rules.lower) pool += 26;
+            if (rules.upper) pool += 26;
+            if (rules.digit) pool += 10;
+            if (rules.special) pool += 32;
+            const entropy = pw.length > 0 && pool > 0 ? Math.round(pw.length * Math.log2(pool)) : 0;
+
+            const guessesPerSec = 1e10;
+            const seconds = pool > 0 ? Math.pow(pool, pw.length) / guessesPerSec : 0;
+            let timeStr = "мгновенно";
+            if (!rules.nocommon && pw.length > 0) timeStr = "мгновенно";
+            else if (seconds < 1) timeStr = "мгновенно";
+            else if (seconds < 60) timeStr = Math.round(seconds) + " сек";
+            else if (seconds < 3600) timeStr = Math.round(seconds/60) + " мин";
+            else if (seconds < 86400) timeStr = Math.round(seconds/3600) + " ч";
+            else if (seconds < 31536000) timeStr = Math.round(seconds/86400) + " дн";
+            else if (seconds < 31536000 * 1000) timeStr = Math.round(seconds/31536000) + " лет";
+            else timeStr = "века";
+
+            const score = Object.values(rules).filter(Boolean).length;
+            let level, color;
+            if (pw.length === 0)             { level = "Введите пароль для анализа"; color = "var(--text-main)"; }
+            else if (!rules.nocommon)        { level = "❌ КРИТИЧНО: пароль есть в утечках, взлом мгновенный"; color = "var(--danger-red)"; }
+            else if (score <= 3)             { level = "⚠️ СЛАБЫЙ — лёгкая мишень для атаки"; color = "var(--danger-red)"; }
+            else if (score <= 5)             { level = "🟡 СРЕДНИЙ — приемлемо для непубличных аккаунтов"; color = "#fbbf24"; }
+            else if (score === 6)            { level = "✅ ХОРОШИЙ — устойчив к большинству атак"; color = "var(--safe-green)"; }
+            else                             { level = "🛡️ КРЕПОСТЬ — высочайшая криптостойкость"; color = "var(--safe-green)"; }
+
+            return { rules, entropy, timeStr, level, color };
+        }
+
+        function renderPasswordReport(pw) {
+            const report = document.getElementById('password-report');
+            if (pw.length === 0) {
+                report.style.display = 'none';
+                return;
+            }
+            if (report.style.display === 'none') {
+                report.style.display = 'block';
+                report.style.animation = 'ultraEntrance 0.6s var(--ultra-smooth)';
+            }
+            const a = analyzePassword(pw);
+            document.getElementById('pw-length-val').innerText = pw.length;
+            document.getElementById('pw-entropy-val').innerText = a.entropy;
+            document.getElementById('pw-time-val').innerText = a.timeStr;
+            document.querySelectorAll('.pw-rule').forEach(row => {
+                const r = row.dataset.rule;
+                row.classList.toggle('active', !!a.rules[r]);
+            });
+            const result = document.getElementById('password-result-text');
+            result.innerText = a.level;
+            result.style.color = a.color;
+            result.style.fontWeight = 'bold';
+        }
+
+        function generateStrongPassword() {
+            const lower = "abcdefghijkmnpqrstuvwxyz";
+            const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            const digits = "23456789";
+            const special = "!@#$%^&*()_+-=[]{}";
+            const all = lower + upper + digits + special;
+            let pw = "";
+            pw += lower[Math.floor(Math.random() * lower.length)];
+            pw += upper[Math.floor(Math.random() * upper.length)];
+            pw += digits[Math.floor(Math.random() * digits.length)];
+            pw += special[Math.floor(Math.random() * special.length)];
+            for (let i = 0; i < 12; i++) pw += all[Math.floor(Math.random() * all.length)];
+            pw = pw.split('').sort(() => Math.random() - 0.5).join('');
+            const input = document.getElementById('password-input');
+            input.value = pw;
+            renderPasswordReport(pw);
+            input.focus();
+        }
+
+        document.getElementById('password-input').addEventListener('input', function (e) {
+            renderPasswordReport(e.target.value);
+        });
+
+        // --- ПИНГ-ИНДИКАТОР ---
+        async function measurePing() {
+            const indicator = document.getElementById('ping-indicator');
+            const valueEl = document.getElementById('ping-value');
+            const start = performance.now();
+            try {
+                const res = await fetch('/cs/ping?t=' + start, {cache: 'no-store'});
+                if (!res.ok) throw new Error('bad');
+                const ms = Math.round(performance.now() - start);
+                valueEl.innerText = ms + ' ms';
+                indicator.classList.remove('warn', 'bad');
+                if (ms > 600) indicator.classList.add('bad');
+                else if (ms > 250) indicator.classList.add('warn');
+            } catch(e) {
+                valueEl.innerText = '--- ms';
+                indicator.classList.remove('warn');
+                indicator.classList.add('bad');
+            }
+        }
+        measurePing();
+        setInterval(measurePing, 5000);
+
     </script>
 </body>
 </html>
@@ -1863,167 +2472,246 @@ def home():
         HTML_LAYOUT,
         total_scans=scans, total_threats=viruses,
         stats_count=scans, scans_word=scans_word,
-        current_page='home',
-        verdict_text=None, stats=None, detail_items=[], ai_text=''
+        current_page='home'
     )
 
 @app.route('/check', methods=['POST'])
 def check():
     url = request.form.get('url', '').strip()
     scans, viruses = get_real_stats()
-    time.sleep(1)
-    verdict_text = None
-    stats = None
-    detail_items = []
-    ai_text = ''
+    time.sleep(1) 
     try:
-        if not VT_API_KEY:
-            raise Exception("VT_API_KEY not set")
-        res = requests.post(
-            "https://www.virustotal.com/api/v3/urls",
-            data={"url": url},
-            headers={"x-apikey": VT_API_KEY},
-            timeout=20
-        )
+        res = requests.post("https://www.virustotal.com/api/v3/urls", data={"url": url}, headers={"x-apikey": VT_API_KEY}, timeout=20)
         analysis_id = res.json()['data']['id']
         data = None
-        for _ in range(6):
+        for _ in range(6): 
             time.sleep(5)
-            report = requests.get(
-                f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
-                headers={"x-apikey": VT_API_KEY},
-                timeout=20
-            )
+            report = requests.get(f"https://www.virustotal.com/api/v3/analyses/{analysis_id}", headers={"x-apikey": VT_API_KEY}, timeout=20)
             if report.status_code == 200:
                 temp_data = report.json()['data']['attributes']
                 if temp_data['status'] == 'completed' or temp_data['stats']['harmless'] > 0:
-                    data = temp_data
-                    break
-
+                    data = temp_data; break
+        
         if data:
             stats = data['stats']
             update_real_stats(is_virus=stats['malicious'] > 0)
-            verdict_text = 'УГРОЗА' if stats['malicious'] > 0 else 'ЧИСТО'
-            ai_text = ask_ai_opinion(url, stats)
-
-            parsed = re.match(r'https?://([^/]+)', url)
-            domain = parsed.group(1) if parsed else url
-            is_safe = stats['malicious'] == 0
-
-            detail_items = [
-                {'label': 'ПРОВЕРЯЕМЫЙ URL', 'text': url[:60] + ('...' if len(url) > 60 else '')},
-                {'label': 'ДОМЕН', 'text': domain},
-                {'label': 'АНТИВИРУСОВ ПРОВЕРИЛО', 'text': str(sum(stats.values()))},
-                {'label': 'ВРЕДОНОСНЫХ СИГНАТУР', 'text': str(stats['malicious'])},
-                {'label': 'ПОДОЗРИТЕЛЬНЫХ', 'text': str(stats['suspicious'])},
-                {'label': 'БЕЗОПАСНЫХ ПРОВЕРОК', 'text': str(stats['harmless'])},
-                {'label': 'СТАТУС', 'text': '✅ БЕЗОПАСНО' if is_safe else '⚠️ УГРОЗА ОБНАРУЖЕНА'},
-            ]
-        else:
-            ai_text = "Анализ занял слишком много времени. Повторите позже."
-            verdict_text = 'ОШИБКА'
-
-    except Exception as e:
-        ai_text = f"Ошибка анализа: {str(e)[:80]}"
-        verdict_text = 'ОШИБКА'
-
-    scans2, viruses2 = get_real_stats()
-    scans_word = _ru_plural(scans2, ('ПРОВЕРКА', 'ПРОВЕРКИ', 'ПРОВЕРОК'))
+            new_scans, new_viruses = get_real_stats()
+            ai_opinion = ask_ai_opinion(url, stats)
+            
+            if stats['malicious'] > 0:
+                items = [
+                    {"label": "КРИТИЧЕСКИЙ ОБЪЕКТ", "text": "Обнаружено внедрение вредоносного кода."},
+                    {"label": "АКТИВНЫЙ ПЕРЕХВАТ", "text": "Зафиксирована попытка несанкционированного доступа."},
+                    {"label": "ФИШИНГ-УГРОЗА", "text": "Ресурс идентифицирован как поддельный."}
+                ]
+            else:
+                items = [
+                    {"label": "БАЗА СИГНАТУР", "text": "Вредоносные элементы не обнаружены."},
+                    {"label": "ИНДЕКС ДОВЕРИЯ", "text": "Домен обладает хорошей репутацией."},
+                    {"label": "SSL-ПРОТОКОЛ", "text": "Каналы передачи данных соответствуют нормам."}
+                ]
+            
+            return render_template_string(
+                HTML_LAYOUT, stats=stats, verdict_text="Готово", ai_text=ai_opinion,
+                detail_items=items, total_scans=new_scans, total_threats=new_viruses,
+                stats_count=new_scans,
+                scans_word=_ru_plural(new_scans, ('ПРОВЕРКА', 'ПРОВЕРКИ', 'ПРОВЕРОК')),
+                current_page='scanner'
+            )
+    except: pass
     return render_template_string(
-        HTML_LAYOUT,
-        total_scans=scans2, total_threats=viruses2,
-        stats_count=scans2, scans_word=scans_word,
-        current_page='scanner',
-        verdict_text=verdict_text, stats=stats,
-        detail_items=detail_items, ai_text=ai_text
+        HTML_LAYOUT, stats=None, verdict_text="Ошибка",
+        total_scans=scans, total_threats=viruses,
+        stats_count=scans,
+        scans_word=_ru_plural(scans, ('ПРОВЕРКА', 'ПРОВЕРКИ', 'ПРОВЕРОК')),
+        current_page='scanner'
     )
 
-@app.route('/cs/ping')
-def ping():
-    return jsonify({'ok': True})
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ ИНТЕГРАЦИИ GROQ (СИМУЛЯЦИЯ И ПОМОЩНИК) ---
+
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "llama3-8b-8192"]
+
+class GroqError(Exception):
+    pass
+
+def _call_groq(messages, temperature=0.8, max_tokens=180):
+    key = (GROQ_API_KEY or '').strip()
+    if not key:
+        raise GroqError("GROQ_API_KEY не задан в переменных окружения")
+
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+
+    last_err = None
+    for model in GROQ_MODELS:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        try:
+            res = requests.post(GROQ_URL, headers=headers, json=payload, timeout=20)
+        except requests.RequestException as e:
+            last_err = f"Сетевая ошибка: {e}"
+            continue
+
+        if res.status_code == 200:
+            try:
+                data = res.json()
+                return data['choices'][0]['message']['content'].strip()
+            except (ValueError, KeyError, IndexError) as e:
+                last_err = f"Неверный формат ответа Groq: {e}"
+                continue
+
+        if res.status_code in (401, 403):
+            try:
+                msg = res.json().get('error', {}).get('message', res.text)
+            except Exception:
+                msg = res.text
+            raise GroqError(f"Ключ Groq отклонён ({res.status_code}): {msg}")
+
+        try:
+            msg = res.json().get('error', {}).get('message', res.text)
+        except Exception:
+            msg = res.text
+        last_err = f"HTTP {res.status_code} ({model}): {msg}"
+        if res.status_code not in (400, 404):
+            continue
+
+    raise GroqError(last_err or "Неизвестная ошибка Groq")
+
+
+def _evaluate_defense(history, theme):
+    transcript_lines = []
+    for m in history:
+        role = m.get("role")
+        if role == "system":
+            continue
+        if role == "user" and m.get("content", "").startswith("[Начни атаку"):
+            continue
+        prefix = "МОШЕННИК" if role == "assistant" else "ЖЕРТВА"
+        transcript_lines.append(f"{prefix}: {m.get('content','')}")
+    convo = "\n".join(transcript_lines)
+    eval_messages = [
+        {"role": "system", "content": "Ты строгий эксперт по кибербезопасности. Оцени, насколько хорошо ЖЕРТВА защищалась от МОШЕННИКА. Критерии: не выдала личные данные, коды, пароли, реквизиты карт; не перешла по ссылкам; не перевела деньги; распознала обман; вежливо или жёстко отказала. Если жертва раскусила обман и отказалась — ставь 80-100. Если осторожничала, но колебалась — 50-79. Если выдала часть данных — 20-49. Если полностью повелась — 0-19. Ответь СТРОГО одним числом от 0 до 100, без слов и пояснений."},
+        {"role": "user", "content": f"Тема атаки: {theme}\n\nДиалог:\n{convo}\n\nОценка (только число 0-100):"}
+    ]
+    try:
+        raw = _call_groq(eval_messages, temperature=0.0, max_tokens=10)
+        m = re.search(r'\d+', raw)
+        if m:
+            return max(0, min(100, int(m.group())))
+    except Exception:
+        pass
+    return 50
+
 
 @app.route('/cs/sim_chat', methods=['POST'])
 def sim_chat():
-    data = request.json
+    data = request.json or {}
     text = data.get('text', '')
     history = data.get('history', [])
-    theme = data.get('theme', '')
+    theme = data.get('theme', 'Социальная инженерия')
     is_start = data.get('is_start', False)
-    turn = data.get('turn', 0)
+    turn = int(data.get('turn', 0))
 
-    if not GROQ_API_KEY:
-        return jsonify({'reply': 'GROQ_API_KEY не настроен.', 'history': history, 'turn': turn, 'is_ended': False})
+    MAX_TURNS = 4
 
-    SIM_MAX_TURNS = 4
-    system_prompt = (
-        f"Ты — мошенник, симулирующий атаку типа «{theme}». "
-        "Разговаривай убедительно, давай давление. "
-        "Цель пользователя — не поддаться. "
-        "После 4 ходов подведи итог и выдай JSON: {{\"score\": 0-100, \"verdict\": \"...\"}}"
+    sys_prompt = (
+        f"Ты опытный кибер-мошенник. Тема атаки: {theme}. "
+        f"Общаешься в мессенджере на русском. Цель — выманить у жертвы ссылку, деньги, код из СМС, пароль или данные карты. "
+        f"Пиши коротко: 1-3 предложения. Реалистично, эмоционально, можешь давить или умолять. "
+        f"Не выходи из роли. Не подсказывай жертве, как от тебя защититься. "
+        f"Никогда не пиши служебные пометки в квадратных скобках или слова вроде [END]."
     )
 
+    if not history:
+        history = [{"role": "system", "content": sys_prompt}]
+
     if is_start:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Начни симуляцию атаки типа «{theme}». Первое сообщение мошенника."}
-        ]
-    else:
-        messages = [{"role": "system", "content": system_prompt}] + history
-        messages.append({"role": "user", "content": text})
-        turn += 1
+        history.append({"role": "user", "content": "[Начни атаку первым коротким сообщением]"})
+        try:
+            reply = _call_groq(history, temperature=0.9, max_tokens=160)
+        except GroqError as e:
+            print(f"[GROQ sim_chat start] {e}")
+            reply = "Здравствуйте! Это служба безопасности банка. С вашей карты сейчас пытаются списать крупную сумму. Срочно подтвердите данные!"
+        except Exception as e:
+            print(f"[GROQ sim_chat start unknown] {e}")
+            reply = "Здравствуйте! Это служба безопасности банка. С вашей карты сейчас пытаются списать крупную сумму. Срочно подтвердите данные!"
+        history.append({"role": "assistant", "content": reply})
+        return jsonify({"reply": reply, "history": history, "is_ended": False, "score": 0, "turn": 0})
+
+    history.append({"role": "user", "content": text})
+    new_turn = turn + 1
+
+    if new_turn >= MAX_TURNS:
+        history.append({"role": "system", "content": "Это последний ход. Дай одну короткую финальную реплику (1-2 предложения) — либо последнюю попытку давления, либо раздражённое признание поражения. Не задавай больше вопросов. Не выходи из роли."})
+        try:
+            final_msg = _call_groq(history, temperature=0.7, max_tokens=120)
+        except GroqError as e:
+            print(f"[GROQ sim_chat final] {e}")
+            final_msg = "Ладно, потом перезвоню."
+        except Exception as e:
+            print(f"[GROQ sim_chat final unknown] {e}")
+            final_msg = "Ладно, потом перезвоню."
+        history.pop(-2)
+        history.append({"role": "assistant", "content": final_msg})
+        score = _evaluate_defense(history, theme)
+        return jsonify({"reply": final_msg, "history": history, "is_ended": True, "score": score, "turn": new_turn})
 
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama3-8b-8192", "messages": messages, "max_tokens": 400, "temperature": 0.8},
-            timeout=20
-        )
-        reply = r.json()['choices'][0]['message']['content']
-        messages.append({"role": "assistant", "content": reply})
-
-        is_ended = turn >= SIM_MAX_TURNS
-        score = 70
-        if is_ended:
-            try:
-                m = re.search(r'"score"\s*:\s*(\d+)', reply)
-                if m: score = int(m.group(1))
-            except: pass
-
-        return jsonify({'reply': reply, 'history': messages[1:], 'turn': turn, 'is_ended': is_ended, 'score': score})
+        reply = _call_groq(history, temperature=0.8, max_tokens=160)
+    except GroqError as e:
+        print(f"[GROQ sim_chat] {e}")
+        reply = "Алло, вы меня слышите? Время уходит, нужно срочно решать!"
     except Exception as e:
-        return jsonify({'reply': f'Ошибка: {str(e)[:60]}', 'history': history, 'turn': turn, 'is_ended': False})
+        print(f"[GROQ sim_chat unknown] {e}")
+        reply = "Алло, вы меня слышите? Время уходит, нужно срочно решать!"
+    history.append({"role": "assistant", "content": reply})
+    return jsonify({"reply": reply, "history": history, "is_ended": False, "score": 0, "turn": new_turn})
+
+@app.route('/cs/ping')
+def ping():
+    return jsonify({"ok": True, "ts": time.time()})
+
 
 @app.route('/cs/helper_chat', methods=['POST'])
 def helper_chat():
-    data = request.json
-    text = data.get('text', '')
+    data = request.json or {}
+    text = (data.get('text') or '').strip()
     history = data.get('history', [])
 
-    if not GROQ_API_KEY:
-        return jsonify({'reply': 'GROQ_API_KEY не настроен. Добавьте ключ в переменные окружения.', 'history': history})
-
-    system_prompt = (
-        "Ты — CyberShield AI, эксперт по кибербезопасности. "
-        "Отвечай кратко, по-русски, практическими советами. "
-        "Помогай пользователям защититься от мошенников и угроз в интернете."
+    sys_prompt = (
+        "Ты ИИ-помощник CyberShield. Помогай пользователю распознавать мошенников "
+        "и давай советы по кибербезопасности. Отвечай кратко и по делу, "
+        "максимум 3-4 предложения, на русском языке."
     )
-    messages = [{"role": "system", "content": system_prompt}] + history
-    messages.append({"role": "user", "content": text})
+
+    if not history:
+        history = [{"role": "system", "content": sys_prompt}]
+
+    if not text:
+        return jsonify({"reply": "Напишите ваш вопрос.", "history": history})
+
+    history.append({"role": "user", "content": text})
 
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama3-8b-8192", "messages": messages, "max_tokens": 300, "temperature": 0.5},
-            timeout=20
-        )
-        reply = r.json()['choices'][0]['message']['content']
-        messages.append({"role": "assistant", "content": reply})
-        return jsonify({'reply': reply, 'history': messages[1:]})
+        reply = _call_groq(history, temperature=0.4, max_tokens=300)
+    except GroqError as e:
+        print(f"[GROQ helper_chat] {e}")
+        reply = f"ИИ-помощник временно недоступен. Причина: {e}"
     except Exception as e:
-        return jsonify({'reply': f'Ошибка связи: {str(e)[:60]}', 'history': history})
+        print(f"[GROQ helper_chat unknown] {e}")
+        reply = "ИИ-помощник временно недоступен. Попробуйте через минуту."
+
+    history.append({"role": "assistant", "content": reply})
+    return jsonify({"reply": reply, "history": history})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port)
