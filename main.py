@@ -1,4 +1,3 @@
-import random
 from flask import Flask, request, render_template_string, jsonify
 import requests
 import time
@@ -176,10 +175,10 @@ HTML_LAYOUT = '''
         }
         .menu-overlay.active { opacity: 1; pointer-events: all; }
 
-        /* ДЕСКТОП (> 700px): постоянный рейл 72px, по клику расширяется */
+        /* ДЕСКТОП (> 700px): постоянный рейл 64px, по клику расширяется */
         .side-menu {
             position: fixed; top: 0; left: 0; height: 100%;
-            width: 72px;
+            width: 64px;
             background: var(--nav-bg); z-index: 9999;
             box-shadow: 4px 0 24px rgba(0,0,0,0.45);
             padding: 70px 8px 20px;
@@ -221,7 +220,7 @@ HTML_LAYOUT = '''
         .menu-item .menu-ico {
             font-size: 21px; line-height: 1;
             /* при свёрнутом меню — занимает всё место и центрируется */
-            flex: 0 0 72px; text-align: center; display: inline-block;
+            flex: 0 0 64px; text-align: center; display: inline-block;
             transition: flex-basis 0.5s var(--ultra-smooth);
         }
         .side-menu.active .menu-item .menu-ico { flex-basis: 46px; }
@@ -1022,18 +1021,95 @@ HTML_LAYOUT = '''
         }
         .vid-player { width: 100%; display: block; max-height: 360px; object-fit: contain; }
 
-        /* ФОТО ГАЛЕРЕЯ ВНУТРИ АККОРДЕОНА */
-        .photo-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+        /* КАРУСЕЛЬ ВИДЕО (стрелки + табы) */
+        .vid-carousel-wrap {
+            position: relative; overflow: hidden;
+            margin-bottom: 14px;
         }
-        @media (max-width: 480px) { .photo-grid { grid-template-columns: 1fr; } }
+        .vid-carousel-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(30,27,75,0.82); border: 1.5px solid rgba(244,114,182,0.6);
+            color: #fff; cursor: pointer; z-index: 5;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; line-height: 1; padding-bottom: 2px;
+            transition: background 0.28s var(--smooth), transform 0.28s var(--smooth), box-shadow 0.28s;
+            backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        }
+        .vid-carousel-arrow.prev { left: 4px; }
+        .vid-carousel-arrow.next { right: 4px; }
+        .vid-carousel-arrow:hover {
+            background: var(--accent-berry); color: #1E1B4B;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(244,114,182,0.55);
+        }
+        .vid-carousel-arrow:active { transform: translateY(-50%) scale(0.94); }
+        body.light-mode .vid-carousel-arrow { background: rgba(255,255,255,0.94); color: #1E1B4B; }
+        .vid-tabs {
+            display: flex; gap: 10px;
+            flex-wrap: nowrap; overflow-x: hidden;
+            scroll-behavior: smooth;
+            padding: 0 44px;
+        }
+        .vid-tab {
+            flex: 0 0 calc(33.333% - 7px);
+            background: rgba(0,0,0,0.25); border: 1.5px solid rgba(244,114,182,0.2);
+            border-radius: 14px; padding: 14px 10px 12px;
+            cursor: pointer; color: var(--text-main);
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            transition: background 0.3s, border-color 0.3s, transform 0.32s, box-shadow 0.32s;
+            font-family: inherit; min-width: 100px;
+        }
+        .vid-tab-ico { font-size: 26px; }
+        .vid-tab-text { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-align: center; line-height: 1.4; }
+        .vid-tab:hover { border-color: var(--accent-berry); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(244,114,182,0.2); }
+        .vid-tab.active { background: var(--btn-static); color: #1E1B4B; border-color: transparent; box-shadow: 0 6px 18px rgba(244,114,182,0.35); }
+        .vid-tab.active .vid-tab-text { color: #1E1B4B; }
+        body.light-mode .vid-tab { background: rgba(244,114,182,0.07); }
+        .vid-player-wrap {
+            border-radius: 14px; overflow: hidden;
+            border: 1.5px solid rgba(244,114,182,0.25);
+            background: #000; box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+        }
+        .vid-player { width: 100%; display: block; max-height: 360px; object-fit: contain; }
+
+        /* КАРУСЕЛЬ ФОТО (стрелки + горизонтальный скролл) */
+        .photo-carousel-wrap {
+            position: relative; overflow: hidden;
+        }
+        .photo-carousel-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(30,27,75,0.82); border: 1.5px solid rgba(244,114,182,0.6);
+            color: #fff; cursor: pointer; z-index: 5;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; line-height: 1; padding-bottom: 2px;
+            transition: background 0.28s var(--smooth), transform 0.28s var(--smooth), box-shadow 0.28s;
+            backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        }
+        .photo-carousel-arrow.prev { left: 4px; }
+        .photo-carousel-arrow.next { right: 4px; }
+        .photo-carousel-arrow:hover {
+            background: var(--accent-berry); color: #1E1B4B;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(244,114,182,0.55);
+        }
+        .photo-carousel-arrow:active { transform: translateY(-50%) scale(0.94); }
+        body.light-mode .photo-carousel-arrow { background: rgba(255,255,255,0.94); color: #1E1B4B; }
+        .photo-track {
+            display: flex; gap: 12px;
+            overflow-x: hidden; scroll-behavior: smooth;
+            padding: 4px 44px 8px;
+        }
         .photo-card {
+            flex: 0 0 calc(50% - 6px);
             border-radius: 14px; overflow: hidden;
             border: 1.5px solid rgba(244,114,182,0.18);
             background: var(--card-bg);
             cursor: pointer; position: relative;
             transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
         }
+        @media (max-width: 480px) { .photo-card { flex: 0 0 82vw; } }
         .photo-card:hover { transform: translateY(-5px) scale(1.02); border-color: var(--accent-berry); box-shadow: 0 12px 28px rgba(244,114,182,0.3); }
         .photo-card img { width: 100%; display: block; aspect-ratio: 3/4; object-fit: cover; }
         @media (max-width: 480px) { .photo-card img { aspect-ratio: 4/3; } }
@@ -1043,6 +1119,7 @@ HTML_LAYOUT = '''
             background: var(--card-bg); text-align: center;
         }
         body.light-mode .photo-card { background: #fff; box-shadow: 0 2px 10px rgba(30,27,75,0.07); }
+        .photo-grid { display: none; }
 
         /* МОДАЛЬНОЕ ОКНО ФОТО */
         .photo-modal {
@@ -1203,8 +1280,8 @@ HTML_LAYOUT = '''
 
         <!-- Гербы РБ и МВД — показываются только при раскрытии -->
         <div class="menu-emblems">
-            <img class="menu-emblem-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Coat_of_Arms_of_Belarus.svg/48px-Coat_of_Arms_of_Belarus.svg.png" alt="Герб РБ" title="Герб Республики Беларусь">
-            <img class="menu-emblem-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg/48px-Emblem_of_the_Ministry_of_Internal_Affairs_%28Belarus%29.svg.png" alt="МВД РБ" title="МВД Республики Беларусь">
+            <img class="menu-emblem-img" src="https://i.ibb.co/7DGmDfj/cybershield11.png" alt="Герб РБ" title="Герб Республики Беларусь">
+            <img class="menu-emblem-img" src="https://i.ibb.co/35yc90YN/cybershield111.png" alt="МВД РБ" title="МВД Республики Беларусь">
         </div>
 
         <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home')">
@@ -1234,8 +1311,8 @@ HTML_LAYOUT = '''
 
             <section class="home-hero">
                 <div class="hero-emblems">
-                    <img class="hero-emblem" src="/static/emblem_rb.svg" alt="Герб Республики Беларусь" title="Республика Беларусь">
-                    <img class="hero-emblem" src="/static/emblem_mvd.svg" alt="МВД Республики Беларусь" title="МВД Республики Беларусь">
+                    <img class="hero-emblem" src="https://i.ibb.co/7DGmDfj/cybershield11.png" alt="Герб Республики Беларусь" title="Республика Беларусь">
+                    <img class="hero-emblem" src="https://i.ibb.co/35yc90YN/cybershield111.png" alt="МВД Республики Беларусь" title="МВД Республики Беларусь">
                 </div>
                 <h1 class="home-hero-title">Защита, которая<br><span class="home-hero-accent">говорит на твоём языке</span></h1>
                 <p class="home-hero-sub">CyberShield — белорусский интеллектуальный щит. Проверка ссылок, разоблачение мошенников и тренировка реакции на цифровые угрозы — всё в одном месте, простым языком и без рекламы.</p>
@@ -1314,23 +1391,27 @@ HTML_LAYOUT = '''
                     </div>
                     <div class="accord-content">
                         <div class="accord-inner">
+                            <div class="vid-carousel-wrap" id="vid-carousel">
+                                <button class="vid-carousel-arrow prev" onclick="moveVidCarousel(-1)" aria-label="Назад">‹</button>
+                                <button class="vid-carousel-arrow next" onclick="moveVidCarousel(1)" aria-label="Вперёд">›</button>
                             <div class="vid-tabs" id="vid-tabs">
-                                <button class="vid-tab active" data-src="/static/video_bezopasnost.mp4" onclick="selectVideo(this)">
+                                <button class="vid-tab active" data-src="https://litter.catbox.moe/jec29k.mp4" onclick="selectVideo(this)">
                                     <span class="vid-tab-ico">🌐</span>
                                     <span class="vid-tab-text">Безопасность<br>в интернете</span>
                                 </button>
-                                <button class="vid-tab" data-src="/static/video_soobscheniya.mp4" onclick="selectVideo(this)">
+                                <button class="vid-tab" data-src="https://litter.catbox.moe/p9co2t.mp4" onclick="selectVideo(this)">
                                     <span class="vid-tab-ico">📨</span>
                                     <span class="vid-tab-text">Сообщения<br>от мошенников</span>
                                 </button>
-                                <button class="vid-tab" data-src="/static/video_vygryshi.mp4" onclick="selectVideo(this)">
+                                <button class="vid-tab" data-src="https://litter.catbox.moe/y4umnf.mp4" onclick="selectVideo(this)">
                                     <span class="vid-tab-ico">🎰</span>
                                     <span class="vid-tab-text">Внезапные<br>выигрыши</span>
                                 </button>
                             </div>
+                            </div><!-- /vid-carousel-wrap -->
                             <div class="vid-player-wrap">
                                 <video id="main-video" class="vid-player" controls preload="metadata" playsinline>
-                                    <source id="main-video-src" src="/static/video_bezopasnost.mp4" type="video/mp4">
+                                    <source id="main-video-src" src="https://litter.catbox.moe/jec29k.mp4" type="video/mp4">
                                     Ваш браузер не поддерживает видео.
                                 </video>
                             </div>
@@ -1351,22 +1432,26 @@ HTML_LAYOUT = '''
                     </div>
                     <div class="accord-content">
                         <div class="accord-inner">
-                            <div class="photo-grid">
-                                <div class="photo-card" onclick="openPhotoModal('/static/img_apk.jpg','Вирусные APK-файлы — как защититься')">
-                                    <img src="/static/img_apk.jpg" alt="Вирусные APK-файлы" loading="lazy">
-                                    <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
-                                </div>
-                                <div class="photo-card" onclick="openPhotoModal('/static/img_kids.jpg','Безопасный интернет для детей')">
-                                    <img src="/static/img_kids.jpg" alt="Безопасный интернет для детей" loading="lazy">
-                                    <div class="photo-card-label">👦 Безопасный интернет</div>
-                                </div>
-                                <div class="photo-card" onclick="openPhotoModal('/static/img_hacker.png','Угрозы в сети — типичные схемы хакерских атак')">
-                                    <img src="/static/img_hacker.png" alt="Угрозы в сети" loading="lazy">
-                                    <div class="photo-card-label">🖥️ Угрозы в сети</div>
-                                </div>
-                                <div class="photo-card" onclick="openPhotoModal('/static/img_konkurs.png','#КиберПраво: твой щит в сети — конкурс')">
-                                    <img src="/static/img_konkurs.png" alt="#КиберПраво конкурс" loading="lazy">
-                                    <div class="photo-card-label">🏆 #КиберПраво</div>
+                            <div class="photo-carousel-wrap" id="photo-carousel">
+                                <button class="photo-carousel-arrow prev" onclick="movePhotoCarousel(-1)" aria-label="Назад">‹</button>
+                                <button class="photo-carousel-arrow next" onclick="movePhotoCarousel(1)" aria-label="Вперёд">›</button>
+                                <div class="photo-track" id="photo-track">
+                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/pv1L6gJg/cybershield.jpg','Вирусные APK-файлы — как защититься')">
+                                        <img src="https://i.ibb.co/pv1L6gJg/cybershield.jpg" alt="Вирусные APK-файлы" loading="lazy">
+                                        <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
+                                    </div>
+                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/sdgQCCZK/cybershield1.jpg','Главные правила цифровой гигиены')">
+                                        <img src="https://i.ibb.co/sdgQCCZK/cybershield1.jpg" alt="Правила цифровой гигиены" loading="lazy">
+                                        <div class="photo-card-label">🧼 Цифровая гигиена</div>
+                                    </div>
+                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/4wtT0N7c/cybershield2.jpg','Угрозы в сети — типичные схемы хакерских атак')">
+                                        <img src="https://i.ibb.co/4wtT0N7c/cybershield2.jpg" alt="Угрозы в сети" loading="lazy">
+                                        <div class="photo-card-label">🖥️ Угрозы в сети</div>
+                                    </div>
+                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/chPQ5VK7/2026-04-04-165314.png','#КиберПраво: твой щит в сети — конкурс')">
+                                        <img src="https://i.ibb.co/chPQ5VK7/2026-04-04-165314.png" alt="#КиберПраво конкурс" loading="lazy">
+                                        <div class="photo-card-label">🏆 #КиберПраво</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1812,6 +1897,24 @@ HTML_LAYOUT = '''
             const box = document.getElementById(id);
             if (!box) return;
             box.classList.toggle('open');
+        }
+
+        // --- КАРУСЕЛЬ ВИДЕО ---
+        function moveVidCarousel(dir) {
+            const tabs = document.getElementById('vid-tabs');
+            if (!tabs) return;
+            const card = tabs.querySelector('.vid-tab');
+            const cardW = card ? card.offsetWidth + 10 : 120;
+            tabs.scrollBy({ left: dir * cardW, behavior: 'smooth' });
+        }
+
+        // --- КАРУСЕЛЬ ФОТО ---
+        function movePhotoCarousel(dir) {
+            const track = document.getElementById('photo-track');
+            if (!track) return;
+            const card = track.querySelector('.photo-card');
+            const cardW = card ? card.offsetWidth + 12 : 200;
+            track.scrollBy({ left: dir * cardW, behavior: 'smooth' });
         }
 
         function selectVideo(btn) {
@@ -2715,3 +2818,4 @@ def helper_chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+ 
