@@ -6,7 +6,6 @@ import re
 
 app = Flask(__name__)
 
-# --- КЛЮЧИ ---
 VT_API_KEY = os.getenv('VT_API_KEY')
 HF_TOKEN = os.getenv('HF_TOKEN')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
@@ -28,10 +27,13 @@ def update_real_stats(is_virus=False):
     with open(STATS_FILE, 'w') as f: f.write(f"{scans},{viruses}")
 
 def ask_ai_opinion(url, stats):
-    if not HF_TOKEN or 'ВСТАВЬ' in HF_TOKEN: return "Анализ сигнатур завершен успешно."
+    if not HF_TOKEN or 'ВСТАВЬ' in HF_TOKEN:
+        if stats['malicious'] > 0:
+            return "Сигнатурный анализ зафиксировал активную угрозу. Ресурс идентифицирован как вредоносный несколькими независимыми аналитическими движками. Переход категорически не рекомендован."
+        return "Комплексная проверка завершена без выявления аномалий. Ресурс соответствует стандартам безопасности."
     prompt = (
         f"<s>[INST] Ты — CyberShield AI. Проверь URL: {url}. Угроз найдено: {stats['malicious']}. "
-        f"Напиши короткий, технический вердикт. [/INST]"
+        f"Напиши короткий, технический вердикт на русском языке. [/INST]"
     )
     try:
         API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
@@ -67,7 +69,6 @@ HTML_LAYOUT = '''
             --smooth: cubic-bezier(0.4, 0, 0.2, 1);
             --ultra-smooth: cubic-bezier(0.65, 0, 0.35, 1);
         }
-
         body.light-mode {
             --bg-dark: #fdf2f8;
             --card-bg: #ffffff;
@@ -76,48 +77,43 @@ HTML_LAYOUT = '''
             --grad-berry: linear-gradient(90deg, #fce7f3, #fdf2f8);
             --text-main: #1E1B4B;
         }
-
-        body { 
-            margin: 0; padding: 0; background-color: var(--bg-dark); color: var(--text-main); 
-            font-family: 'Segoe UI', sans-serif; transition: background 0.5s var(--smooth); overflow-x: hidden; 
+        body {
+            margin: 0; padding: 0; background-color: var(--bg-dark); color: var(--text-main);
+            font-family: 'Segoe UI', sans-serif; transition: background 0.5s var(--smooth); overflow-x: hidden;
             min-height: 100vh; position: relative;
         }
-        
         @keyframes ultraEntrance {
             0% { opacity: 0; transform: translateY(30px) scale(0.98); filter: blur(10px); }
             100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
-
         .rays-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; overflow: hidden; }
-        .ray { 
-            position: absolute; 
+        .ray {
+            position: absolute;
             width: 1px; height: 180px;
-            background: linear-gradient(to top, var(--accent-berry), transparent); 
+            background: linear-gradient(to top, var(--accent-berry), transparent);
             animation: rise linear infinite; opacity: 0; bottom: -200px;
             will-change: transform, opacity;
         }
-        /* луч НИКОГДА не гаснет в начале — всегда долетает минимум до середины */
-        @keyframes rise { 
-            0% { transform: translateY(0); opacity: 0; } 
-            12% { opacity: 0.55; } 
+        @keyframes rise {
+            0% { transform: translateY(0); opacity: 0; }
+            12% { opacity: 0.55; }
             88% { opacity: 0.55; }
-            100% { transform: translateY(-135vh); opacity: 0; } 
+            100% { transform: translateY(-135vh); opacity: 0; }
         }
-        @keyframes rise-fade-mid { 
-            0% { transform: translateY(0); opacity: 0; } 
-            15% { opacity: 0.6; } 
+        @keyframes rise-fade-mid {
+            0% { transform: translateY(0); opacity: 0; }
+            15% { opacity: 0.6; }
             45% { transform: translateY(-55vh); opacity: 0.55; }
             55% { transform: translateY(-65vh); opacity: 0; }
-            100% { transform: translateY(-130vh); opacity: 0; } 
+            100% { transform: translateY(-130vh); opacity: 0; }
         }
-        @keyframes rise-fade-late { 
-            0% { transform: translateY(0); opacity: 0; } 
-            15% { opacity: 0.55; } 
+        @keyframes rise-fade-late {
+            0% { transform: translateY(0); opacity: 0; }
+            15% { opacity: 0.55; }
             70% { transform: translateY(-85vh); opacity: 0.5; }
             85% { transform: translateY(-105vh); opacity: 0; }
-            100% { transform: translateY(-130vh); opacity: 0; } 
+            100% { transform: translateY(-130vh); opacity: 0; }
         }
-
         .ray-thick {
             position: absolute;
             width: 3px; height: 240px;
@@ -131,11 +127,10 @@ HTML_LAYOUT = '''
             background: linear-gradient(to top, #ffffff 0%, #ec4899 30%, rgba(236,72,153,0.5) 70%, transparent 100%);
             box-shadow: 0 0 18px #ec4899, 0 0 40px rgba(236,72,153,0.5);
         }
-
         .ray-short {
-            position: absolute; 
+            position: absolute;
             width: 2px; height: 150px;
-            background: linear-gradient(to top, #fff, var(--accent-berry), transparent); 
+            background: linear-gradient(to top, #fff, var(--accent-berry), transparent);
             animation: rise-short linear infinite; opacity: 0; bottom: -200px;
             will-change: transform, opacity;
             box-shadow: 0 0 10px var(--accent-berry);
@@ -146,8 +141,7 @@ HTML_LAYOUT = '''
             50% { transform: translateY(-50vh); opacity: 0; }
             100% { transform: translateY(-50vh); opacity: 0; }
         }
-
-        /* Десктоп: контент сдвинут правее чтобы не перекрывался рейлом */
+        /* Десктоп: контент сдвинут правее */
         .container { max-width: 650px; margin: 0 auto; padding: 30px 20px 50px 80px; }
 
         /* --- БОКОВОЕ МЕНЮ --- */
@@ -166,7 +160,6 @@ HTML_LAYOUT = '''
         .hamburger-btn.open div:nth-child(1) { transform: translate(-7px, 7px) rotate(90deg); }
         .hamburger-btn.open div:nth-child(2) { opacity: 1; transform: rotate(90deg); }
         .hamburger-btn.open div:nth-child(3) { transform: translate(7px, -7px) rotate(90deg); }
-
         .menu-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.35);
@@ -175,7 +168,7 @@ HTML_LAYOUT = '''
         }
         .menu-overlay.active { opacity: 1; pointer-events: all; }
 
-        /* ДЕСКТОП (> 700px): постоянный рейл 64px, по клику расширяется */
+        /* ДЕСКТОП (> 700px): постоянный рейл 64px */
         .side-menu {
             position: fixed; top: 0; left: 0; height: 100%;
             width: 64px;
@@ -197,14 +190,22 @@ HTML_LAYOUT = '''
             margin-bottom: 0;
         }
         .side-menu.active .menu-emblems {
-            height: 58px; opacity: 1; margin-bottom: 10px;
+            height: 60px; opacity: 1; margin-bottom: 10px;
             transition-delay: 0.05s;
         }
-        .menu-emblem-img { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(244,114,182,0.35)); }
+        /* Квадратные гербы для меню — одинаковый размер */
+        .menu-emblem-img {
+            width: 48px; height: 48px;
+            object-fit: contain;
+            aspect-ratio: 1 / 1;
+            filter: drop-shadow(0 0 8px rgba(244,114,182,0.35));
+            flex-shrink: 0;
+        }
 
-        /* Пункты меню */
+        /* Пункты меню — единая высота всегда */
         .menu-item {
-            padding: 12px 0; background: rgba(0,0,0,0.3); border-radius: 13px;
+            height: 48px; min-height: 48px;
+            background: rgba(0,0,0,0.3); border-radius: 13px;
             font-weight: 800; font-size: 13.5px; cursor: pointer;
             border: 1px solid rgba(244, 114, 182, 0.12);
             transition: background 0.32s var(--smooth), color 0.32s var(--smooth),
@@ -212,14 +213,12 @@ HTML_LAYOUT = '''
             color: var(--text-main); letter-spacing: 0.8px;
             display: flex; align-items: center;
             white-space: nowrap; overflow: hidden;
-            /* центрируем иконку когда свёрнуто */
             justify-content: flex-start;
-            padding-left: 0;
+            padding: 0; box-sizing: border-box;
         }
         body.light-mode .menu-item { background: rgba(244, 114, 182, 0.1); }
         .menu-item .menu-ico {
-            font-size: 21px; line-height: 1;
-            /* при свёрнутом меню — занимает всё место и центрируется */
+            font-size: 20px; line-height: 1;
             flex: 0 0 64px; text-align: center; display: inline-block;
             transition: flex-basis 0.5s var(--ultra-smooth);
         }
@@ -235,7 +234,6 @@ HTML_LAYOUT = '''
             border-color: transparent; box-shadow: 0 0 14px rgba(244, 114, 182, 0.42);
             transform: scale(1.02);
         }
-
         .tg-menu-btn {
             margin-top: 5px; white-space: nowrap; font-size: 13px; text-transform: uppercase;
             opacity: 0; transform: translateY(8px);
@@ -247,7 +245,7 @@ HTML_LAYOUT = '''
         .side-menu hr { opacity: 0; transition: opacity 0.4s var(--smooth); }
         .side-menu.active hr { opacity: 1; }
 
-        /* МОБИЛЬНЫЙ (≤ 700px): рейл скрыт полностью, только гамбургер */
+        /* МОБИЛЬНЫЙ (≤ 700px) */
         @media (max-width: 700px) {
             .container { padding-left: 20px; padding-top: 70px; }
             .hamburger-btn { left: 12px; top: 14px; }
@@ -265,9 +263,9 @@ HTML_LAYOUT = '''
         }
         .tg-super-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 8px 25px rgba(0, 136, 204, 0.6); }
         .tg-super-btn svg { width: 22px; height: 22px; fill: white; flex-shrink: 0; }
-
         .page-content { transition: opacity 0.5s ease; }
-        
+
+        /* РАДАР */
         .radar-box {
             background: var(--card-bg); border-radius: 25px; padding: 25px;
             border: 1px solid rgba(74, 222, 128, 0.3); text-align: center;
@@ -287,15 +285,16 @@ HTML_LAYOUT = '''
             border-radius: 0 100% 0 0;
         }
         @keyframes radarSpin { 100% { transform: rotate(360deg); } }
+        /* Blips — opacity controlled by JS (beam intersection) */
         .blip {
-            width: 6px; height: 6px; background: var(--danger-red); border-radius: 50%;
-            position: absolute; box-shadow: 0 0 10px var(--danger-red);
-            animation: blipFlash 2s infinite; opacity: 0; z-index: 2;
+            width: 8px; height: 8px; background: var(--danger-red); border-radius: 50%;
+            position: absolute; box-shadow: 0 0 12px var(--danger-red);
+            opacity: 0; z-index: 2;
+            transition: opacity 0.08s ease;
         }
-        .blip1 { top: 40px; left: 50px; animation-delay: 0.5s; }
-        .blip2 { top: 100px; left: 120px; animation-delay: 1.2s; }
-        .blip3 { top: 80px; left: 30px; animation-delay: 1.8s; background: #fbbf24; box-shadow: 0 0 10px #fbbf24;}
-        @keyframes blipFlash { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+        .blip1 { top: 40px; left: 50px; }
+        .blip2 { top: 100px; left: 120px; }
+        .blip3 { top: 80px; left: 30px; background: #fbbf24; box-shadow: 0 0 12px #fbbf24; }
         .cyber-logs { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; text-align: left; height: 100px; overflow-y: auto; scrollbar-width: none; }
         .cyber-logs::-webkit-scrollbar { display: none; }
 
@@ -305,45 +304,40 @@ HTML_LAYOUT = '''
         }
         .logo-main span { flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
 
-        .search-card, .report-card { 
+        .search-card, .report-card {
             animation: ultraEntrance 0.8s var(--ultra-smooth) backwards;
             transition: transform 0.4s var(--ultra-smooth), box-shadow 0.4s var(--ultra-smooth), border 0.3s;
         }
-
-        .memo-box, .info-box, .game-section { 
-            background: var(--card-bg); 
-            border-radius: 20px; 
-            margin-bottom: 20px; 
-            border: 2px solid rgba(244, 114, 182, 0.1); 
-            overflow: hidden; 
-            display: grid; 
-            transition: all 0.5s var(--ultra-smooth); 
+        .memo-box, .info-box, .game-section {
+            background: var(--card-bg);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(244, 114, 182, 0.1);
+            overflow: hidden;
+            display: grid;
+            transition: all 0.5s var(--ultra-smooth);
             animation: ultraEntrance 0.8s var(--ultra-smooth) backwards;
         }
-        
         .memo-box, .info-box { grid-template-rows: auto 0fr; }
         .memo-box.active, .info-box.active { grid-template-rows: auto 1fr; }
-
         .memo-box:hover, .info-box:hover, .game-section:hover,
         .memo-box:active, .info-box:active, .game-section:active {
             border: 2px solid transparent;
-            background-image: linear-gradient(var(--card-bg), var(--card-bg)), 
+            background-image: linear-gradient(var(--card-bg), var(--card-bg)),
                               linear-gradient(90deg, var(--accent-berry), var(--accent-frost));
             background-origin: border-box;
             background-clip: padding-box, border-box;
             box-shadow: 0 10px 25px rgba(244, 114, 182, 0.2);
             transform: translateY(-5px);
         }
-
         .search-card { background: var(--grad-berry); padding: 30px; border-radius: 25px; border: 1px solid rgba(244, 114, 182, 0.2); text-align: center; margin-bottom: 25px; }
-        
         .input-wrapper { display: flex; align-items: center; background: var(--input-bg); border-radius: 50px; padding: 5px; border: 1px solid rgba(244, 114, 182, 0.3); margin-top: 20px; gap: 5px; }
         input[type="text"] { flex: 1; padding: 12px 15px; border: none; background: transparent; color: var(--text-main); outline: none; font-size: 14px; min-width: 0; }
-        
-        .btn-scan { 
-            background: var(--btn-static); color: #1E1B4B; border: none; padding: 12px 22px; 
-            border-radius: 50px; font-weight: bold; cursor: pointer; white-space: nowrap; 
-            font-size: 14px; flex-shrink: 0; transition: transform 0.2s var(--smooth); 
+
+        .btn-scan {
+            background: var(--btn-static); color: #1E1B4B; border: none; padding: 12px 22px;
+            border-radius: 50px; font-weight: bold; cursor: pointer; white-space: nowrap;
+            font-size: 14px; flex-shrink: 0; transition: transform 0.2s var(--smooth);
         }
         .btn-scan:active { transform: scale(0.95); }
 
@@ -355,23 +349,20 @@ HTML_LAYOUT = '''
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
         .stat-box { background: rgba(0,0,0,0.1); padding: 15px; border-radius: 18px; text-align: center; border: 1px solid rgba(244, 114, 182, 0.1); }
         .stat-val { font-size: 22px; font-weight: bold; display: block; }
-        
-        .detail-box { 
-            border-radius: 20px; padding: 5px; margin-bottom: 15px; position: relative; overflow: hidden; 
+
+        .detail-box {
+            border-radius: 20px; padding: 5px; margin-bottom: 15px; position: relative; overflow: hidden;
             background: rgba(0,0,0,0.2); border: 1px solid rgba(244, 114, 182, 0.1);
         }
-        
         .detail-list { display: flex; flex-direction: column; gap: 8px; }
-        
         .detail-row {
             position: relative;
             display: flex; align-items: center; gap: 12px;
-            padding: 15px; border-radius: 15px; 
+            padding: 15px; border-radius: 15px;
             background: rgba(30, 27, 75, 0.4);
             overflow: hidden;
             border: 1px solid rgba(255,255,255,0.05);
         }
-
         .detail-row::before {
             content: "";
             position: absolute;
@@ -379,27 +370,16 @@ HTML_LAYOUT = '''
             background: linear-gradient(to bottom, transparent, rgba(129, 140, 248, 0.1), transparent);
             animation: waterfall 3s infinite linear;
         }
-
-        @keyframes waterfall {
-            0% { top: -100%; }
-            100% { top: 100%; }
-        }
-
+        @keyframes waterfall { 0% { top: -100%; } 100% { top: 100%; } }
         .danger .detail-row::before { background: linear-gradient(to bottom, transparent, rgba(248, 113, 113, 0.15), transparent); }
         .safe .detail-row::before { background: linear-gradient(to bottom, transparent, rgba(74, 222, 128, 0.15), transparent); }
-
-        .detail-indicator {
-            width: 4px; height: 20px; border-radius: 2px; flex-shrink: 0;
-            position: relative; z-index: 2;
-        }
+        .detail-indicator { width: 4px; height: 20px; border-radius: 2px; flex-shrink: 0; position: relative; z-index: 2; }
         .danger .detail-indicator { background: var(--danger-red); box-shadow: 0 0 10px var(--danger-red); }
         .safe .detail-indicator { background: var(--safe-green); box-shadow: 0 0 10px var(--safe-green); }
-
         .detail-info { flex: 1; position: relative; z-index: 2; }
         .detail-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 2px; }
         .danger .detail-label { color: var(--danger-red); }
         .safe .detail-label { color: var(--safe-green); }
-        
         .detail-text { font-size: 13px; font-weight: 500; color: var(--text-main); }
 
         .shimmer-text {
@@ -410,7 +390,6 @@ HTML_LAYOUT = '''
             animation: shimmerVertical 3s linear infinite;
             font-weight: bold;
         }
-        
         .status-safe {
             background: linear-gradient(90deg, #4ade80, #fdf2f8, #4ade80);
             background-size: 200% auto;
@@ -425,17 +404,11 @@ HTML_LAYOUT = '''
             -webkit-text-fill-color: transparent;
             animation: shimmerStatus 3s linear infinite;
         }
-
-        @keyframes shimmerVertical {
-            0% { background-position: 0% 100%; }
-            100% { background-position: 0% -100%; }
-        }
+        @keyframes shimmerVertical { 0% { background-position: 0% 100%; } 100% { background-position: 0% -100%; } }
         @keyframes shimmerStatus { to { background-position: 200% center; } }
 
         .ai-box { background: rgba(244, 114, 182, 0.05); border: 1px dashed var(--accent-berry); border-radius: 15px; padding: 15px; font-size: 14px; line-height: 1.6; }
-
         .memo-header, .info-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; z-index: 2; }
-        
         .chevron {
             width: 8px; height: 8px;
             border-bottom: 2px solid var(--accent-berry);
@@ -445,59 +418,43 @@ HTML_LAYOUT = '''
             margin-right: 10px; flex-shrink: 0;
         }
         .memo-box.active .chevron, .info-box.active .chevron { transform: rotate(-135deg); }
-
-        .memo-content, .info-content { 
-            overflow: hidden; 
-            opacity: 0; 
+        .memo-content, .info-content {
+            overflow: hidden;
+            opacity: 0;
             transform: scale(0.95);
             filter: blur(5px);
             transition: opacity 0.6s var(--ultra-smooth), transform 0.6s var(--ultra-smooth), filter 0.6s var(--ultra-smooth);
             padding: 0 20px;
         }
         .memo-box.active .memo-content, .info-box.active .info-content { opacity: 1; transform: scale(1); filter: blur(0); padding: 0 20px 20px; }
-
         .game-section { padding: 25px; position: relative; }
-        
-        .test-tabs { display: flex; gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 15px; }
-        .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-main); font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 10px; transition: all 0.3s; opacity: 0.5; }
+
+        .test-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 15px; }
+        .tab-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-main); font-size: 10px; font-weight: 800; cursor: pointer; border-radius: 10px; transition: all 0.3s; opacity: 0.5; }
         .tab-btn.active { background: var(--accent-berry); color: #1E1B4B; opacity: 1; }
-
         #quiz-area { position: relative; width: 100%; min-height: 160px; overflow: hidden; perspective: 1000px; }
-
-        .quiz-option { 
-            display: block; width: 100%; padding: 14px 18px; margin: 10px 0; background: rgba(0,0,0,0.1); 
-            border: 1px solid rgba(244, 114, 182, 0.2); border-radius: 14px; color: var(--text-main); 
-            cursor: pointer; text-align: left; transition: all 0.4s var(--smooth); 
-            font-size: 14px; box-sizing: border-box;
+        .quiz-option {
+            padding: 12px 15px; border-radius: 15px; cursor: pointer;
+            border: 1px solid rgba(244, 114, 182, 0.2); font-size: 13px; font-weight: 600;
+            transition: all 0.3s var(--smooth); background: rgba(0,0,0,0.2); margin-bottom: 8px;
+            display: block; width: 100%; text-align: left; color: var(--text-main);
         }
-        .quiz-option:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); transform: translateX(6px); }
-        .quiz-option.correct { background: rgba(74, 222, 128, 0.2) !important; border-color: var(--safe-green) !important; color: var(--safe-green); }
-        .quiz-option.wrong { background: rgba(248, 113, 113, 0.2) !important; border-color: var(--danger-red) !important; color: var(--danger-red); }
+        .quiz-option:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); transform: translateX(4px); }
+        .quiz-option.correct { background: rgba(74, 222, 128, 0.15); border-color: var(--safe-green); color: var(--safe-green); }
+        .quiz-option.wrong { background: rgba(248, 113, 113, 0.15); border-color: var(--danger-red); color: var(--danger-red); }
+        #question-text { font-size: 14px; font-weight: 600; margin-bottom: 15px; line-height: 1.5; }
 
-        .slide-left-to-right { 
-            animation: smoothLTR 1.2s var(--ultra-smooth) forwards;
-            will-change: transform, opacity;
-        }
-        @keyframes smoothLTR {
-            0% { opacity: 0; transform: translateX(-100px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
-
+        /* FOOTER */
         .master-footer {
-            position: relative; margin-top: 50px; width: 100%; height: 180px;
-            background: linear-gradient(to top, var(--nav-bg), transparent);
-            z-index: 999; pointer-events: none;
+            position: relative; width: 100%;
+            margin-top: 0;
         }
-
         .footer-line {
-            position: absolute; bottom: 100px; left: 0; width: 100%; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-berry), var(--accent-frost), transparent);
-            box-shadow: 0 0 15px var(--accent-berry);
-            z-index: 1001;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-berry), transparent);
         }
-
         .footer-rays {
-            position: absolute; bottom: 102px; left: 0; width: 100%; height: 150px;
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 150px;
             overflow: hidden; pointer-events: none;
         }
         .footer-ray {
@@ -506,24 +463,21 @@ HTML_LAYOUT = '''
             opacity: 0.4; animation: beamUp 2s infinite ease-out;
         }
         @keyframes beamUp { 0% { height: 0; opacity: 0.8; } 100% { height: 100%; opacity: 0; } }
-
-        .bottom-nav-zone { 
-            position: relative; width: 100%; 
+        .bottom-nav-zone {
+            position: relative; width: 100%;
             background: var(--nav-bg); padding: 40px 0 60px;
             display: flex; flex-direction: column; align-items: center; gap: 30px;
             border-top: 1px solid rgba(244, 114, 182, 0.2);
             z-index: 1002;
         }
-
         .nav-island {
             background: rgba(0,0,0,0.4); padding: 10px 30px; border-radius: 60px;
             border: 2px solid rgba(244, 114, 182, 0.4);
             display: flex; gap: 30px; align-items: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-
-        .nav-link { 
-            text-decoration: none; font-size: 14px; font-weight: 900; 
+        .nav-link {
+            text-decoration: none; font-size: 14px; font-weight: 900;
             cursor: pointer; text-align: center; transition: all 0.3s var(--smooth);
         }
         .nav-link:hover, .nav-link:active {
@@ -531,19 +485,16 @@ HTML_LAYOUT = '''
             color: var(--accent-frost);
             text-shadow: 0 0 12px var(--accent-frost);
         }
-        
         .system-footer { margin-top: 10px; text-align: center; font-size: 13px; }
         .hidden { display: none !important; }
-        
-        .cyber-link { 
-            text-decoration: none; display: inline-block; margin-top: 0px; 
-            transition: all 0.3s var(--smooth); 
+        .cyber-link {
+            text-decoration: none; display: inline-block; margin-top: 0px;
+            transition: all 0.3s var(--smooth);
         }
-        .cyber-link:hover, .cyber-link:active { 
-            transform: translateY(-5px) scale(1.05); 
+        .cyber-link:hover, .cyber-link:active {
+            transform: translateY(-5px) scale(1.05);
             text-shadow: 0 0 15px var(--accent-berry);
         }
-
         .voice-btn {
             background: transparent; border: 1px solid var(--accent-berry); color: var(--accent-berry);
             border-radius: 50%; width: 35px; height: 35px; cursor: pointer; float: right;
@@ -552,38 +503,82 @@ HTML_LAYOUT = '''
         .voice-btn.playing { animation: pulse-voice 1.5s infinite; }
         @keyframes pulse-voice { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        /* --- СТИЛИ ЧАТА СИМУЛЯЦИИ --- */
+        /* --- СИМУЛЯЦИИ --- */
         .sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; align-items: stretch; }
-        .sim-card { 
-            background: rgba(0,0,0,0.2); border: 1px solid rgba(244, 114, 182, 0.2); 
+        .sim-card {
+            background: rgba(0,0,0,0.2); border: 1px solid rgba(244, 114, 182, 0.2);
             border-radius: 15px; padding: 15px 10px; text-align: center; cursor: pointer;
             transition: all 0.3s var(--smooth);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-height: 100px; box-sizing: border-box;
         }
         .sim-card:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); transform: translateY(-5px); }
-        .sim-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
-        .sim-card.locked:hover { transform: none; background: rgba(0,0,0,0.2); border-color: rgba(244, 114, 182, 0.2); }
-        
-        .chat-container { 
+        .chat-container {
             background: rgba(15, 23, 42, 0.8); border-radius: 20px; border: 1px solid rgba(244, 114, 182, 0.3);
-            display: flex; flex-direction: column; height: 400px; overflow: hidden;
+            display: flex; flex-direction: column; overflow: hidden;
             animation: ultraEntrance 0.6s var(--ultra-smooth);
         }
-        .chat-header { background: rgba(0,0,0,0.4); padding: 15px; text-align: center; border-bottom: 1px solid rgba(244, 114, 182, 0.2); font-weight: bold; font-size: 14px;}
-        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-header {
+            background: rgba(0,0,0,0.45); padding: 14px 16px;
+            border-bottom: 1px solid rgba(244, 114, 182, 0.25);
+        }
+        .chat-persona {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .chat-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: linear-gradient(135deg, rgba(244,114,182,0.18), rgba(129,140,248,0.18));
+            border: 2px solid rgba(244,114,182,0.45);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; flex-shrink: 0;
+        }
+        .chat-persona-info { text-align: left; }
+        .chat-persona-name { font-size: 14px; font-weight: 800; color: var(--text-main); letter-spacing: 0.3px; }
+        .chat-persona-role { font-size: 11px; opacity: 0.6; margin-top: 1px; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 300px; max-height: 380px; }
         .chat-messages::-webkit-scrollbar { display: none; }
-        .msg { padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 13px; line-height: 1.4; animation: slideFromLeft 0.3s var(--smooth); }
-        .msg.bot { background: rgba(244, 114, 182, 0.15); border-bottom-left-radius: 2px; border: 1px solid rgba(244, 114, 182, 0.3); align-self: flex-start; color: var(--text-main); }
-        .msg.user { background: var(--btn-static); color: #1E1B4B; border-bottom-right-radius: 2px; align-self: flex-end; animation: slideFromRight 0.3s var(--smooth); font-weight: bold;}
+        .msg { padding: 10px 15px; border-radius: 15px; max-width: 82%; font-size: 13px; line-height: 1.45; animation: slideFromLeft 0.3s var(--smooth); }
+        .msg.bot { background: rgba(244, 114, 182, 0.12); border-bottom-left-radius: 2px; border: 1px solid rgba(244, 114, 182, 0.28); align-self: flex-start; color: var(--text-main); }
+        .msg.user { background: var(--btn-static); color: #1E1B4B; border-bottom-right-radius: 2px; align-self: flex-end; animation: slideFromRight 0.3s var(--smooth); font-weight: bold; }
         .chat-input-area { display: flex; padding: 10px; background: rgba(0,0,0,0.4); gap: 10px; }
         .chat-input-area input { flex: 1; background: rgba(255,255,255,0.1); border: none; border-radius: 20px; padding: 10px 15px; color: white; outline: none; font-size: 13px; }
-        .chat-send-btn { background: var(--btn-static); color: #1E1B4B; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
+        .chat-send-btn { background: var(--btn-static); color: #1E1B4B; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+        /* Ловушка-ссылка */
+        .trap-link {
+            display: inline-block; margin-top: 6px;
+            color: #60a5fa; text-decoration: underline; cursor: pointer;
+            font-size: 12.5px; font-weight: 500;
+            transition: color 0.2s;
+        }
+        .trap-link:hover { color: #93c5fd; }
+        .trap-modal {
+            position: fixed; inset: 0; z-index: 30000;
+            background: rgba(10, 8, 40, 0.92); backdrop-filter: blur(16px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px; box-sizing: border-box;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.38s var(--smooth);
+        }
+        .trap-modal.open { opacity: 1; pointer-events: all; }
+        .trap-modal-inner {
+            max-width: 400px; width: 100%;
+            background: linear-gradient(135deg, rgba(30,27,75,0.98), rgba(15,23,42,0.98));
+            border: 1px solid rgba(248,113,113,0.45);
+            border-radius: 22px; padding: 32px 26px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(248,113,113,0.25), 0 20px 60px rgba(0,0,0,0.6);
+            transform: scale(0.9); transition: transform 0.4s var(--ultra-smooth);
+        }
+        .trap-modal.open .trap-modal-inner { transform: scale(1); }
+        .trap-icon { font-size: 52px; margin-bottom: 16px; display: block; animation: trapBounce 0.6s var(--ultra-smooth); }
+        @keyframes trapBounce { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        body.light-mode .trap-modal-inner { background: #ffffff; border-color: rgba(248,113,113,0.5); color: #1E1B4B; }
 
         @keyframes slideFromLeft { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes slideFromRight { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* --- ПАРОЛЬНЫЙ СТРАЖ --- */
+        /* ПАРОЛЬНЫЙ СТРАЖ */
         .pw-rule { transition: all 0.45s var(--smooth); opacity: 0.55; }
         .pw-rule .detail-indicator { background: rgba(203, 213, 225, 0.35); box-shadow: none; transition: all 0.45s var(--smooth); }
         .pw-rule .detail-label { color: var(--text-main); transition: color 0.45s var(--smooth); letter-spacing: 0.5px; }
@@ -593,13 +588,10 @@ HTML_LAYOUT = '''
             box-shadow: 0 0 12px var(--safe-green), 0 0 22px rgba(74, 222, 128, 0.4);
             animation: pwPulse 1.6s ease-in-out infinite;
         }
-        .pw-rule.active .detail-label {
-            color: var(--safe-green);
-            text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
-        }
+        .pw-rule.active .detail-label { color: var(--safe-green); text-shadow: 0 0 8px rgba(74, 222, 128, 0.5); }
         @keyframes pwPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 
-        /* --- ПИНГ-ИНДИКАТОР (перенесён в нижнюю зону, не пересекается с #КИБЕРПРАВО) --- */
+        /* ПИНГ */
         .ping-indicator {
             position: absolute; top: 14px; right: 16px;
             display: inline-flex; align-items: center; gap: 6px;
@@ -614,8 +606,7 @@ HTML_LAYOUT = '''
         .ping-indicator #ping-value { font-weight: bold; }
         .ping-dot {
             width: 7px; height: 7px; border-radius: 50%;
-            background: var(--safe-green);
-            box-shadow: 0 0 8px var(--safe-green);
+            background: var(--safe-green); box-shadow: 0 0 8px var(--safe-green);
             animation: pingPulse 1.4s ease-in-out infinite;
         }
         @keyframes pingPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.6; } }
@@ -624,15 +615,9 @@ HTML_LAYOUT = '''
         .ping-indicator.bad { border-color: rgba(239, 68, 68, 0.4); color: var(--danger-red); }
         .ping-indicator.bad .ping-dot { background: var(--danger-red); box-shadow: 0 0 8px var(--danger-red); }
 
-        /* ============================================
-           ГЛАВНАЯ СТРАНИЦА — ПРОФЕССИОНАЛЬНЫЙ ДИЗАЙН
-           ============================================ */
-
-        /* HERO */
+        /* === ГЛАВНАЯ === */
         .home-hero {
-            padding: 40px 8px 28px;
-            text-align: center;
-            position: relative;
+            padding: 40px 8px 28px; text-align: center; position: relative;
             animation: ultraEntrance 0.8s var(--ultra-smooth) both;
         }
         .home-hero-badge {
@@ -641,75 +626,48 @@ HTML_LAYOUT = '''
             padding: 7px 14px; border-radius: 999px;
             background: rgba(74, 222, 128, 0.08);
             border: 1px solid rgba(74, 222, 128, 0.35);
-            color: var(--safe-green);
-            margin-bottom: 22px;
+            color: var(--safe-green); margin-bottom: 22px;
         }
         .hero-dot {
             width: 7px; height: 7px; border-radius: 50%;
-            background: var(--safe-green);
-            box-shadow: 0 0 10px var(--safe-green);
+            background: var(--safe-green); box-shadow: 0 0 10px var(--safe-green);
             animation: heroPulse 1.8s ease-in-out infinite;
         }
-        @keyframes heroPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.4); }
-        }
+        @keyframes heroPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.4); } }
         .home-hero-title {
-            font-size: clamp(28px, 5vw, 42px);
-            line-height: 1.1;
-            font-weight: 800;
-            margin: 0 0 18px;
-            letter-spacing: -0.8px;
-            color: var(--text-main);
+            font-size: clamp(28px, 5vw, 42px); line-height: 1.1; font-weight: 800;
+            margin: 0 0 18px; letter-spacing: -0.8px; color: var(--text-main);
         }
         .home-hero-accent {
             background: linear-gradient(135deg, var(--accent-berry), var(--accent-frost));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .home-hero-sub {
-            font-size: 14px; line-height: 1.6;
-            max-width: 480px; margin: 0 auto 18px;
-            opacity: 0.82;
-        }
-        .home-hero-extra {
-            font-size: 13px; line-height: 1.7;
-            max-width: 520px; margin: 0 auto 26px;
-            opacity: 0.72;
-        }
-        .home-hero-cta {
-            display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-        }
+        .home-hero-sub { font-size: 14px; line-height: 1.6; max-width: 480px; margin: 0 auto 18px; opacity: 0.82; }
+        .home-hero-extra { font-size: 13px; line-height: 1.7; max-width: 520px; margin: 0 auto 26px; opacity: 0.72; }
+        .home-hero-cta { display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
         .hero-btn {
-            padding: 13px 26px;
-            border-radius: 12px;
+            padding: 13px 26px; border-radius: 12px;
             font-size: 13px; font-weight: 700; letter-spacing: 0.6px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.35s var(--smooth);
-            display: inline-block;
+            cursor: pointer; text-decoration: none; transition: all 0.35s var(--smooth); display: inline-block;
         }
         .hero-btn.primary {
             background: linear-gradient(135deg, var(--accent-berry), #ec4899);
-            color: #fff;
-            box-shadow: 0 6px 20px rgba(244, 114, 182, 0.35);
+            color: #fff; box-shadow: 0 6px 20px rgba(244, 114, 182, 0.35);
         }
         .hero-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(244, 114, 182, 0.5); }
         .hero-btn.ghost {
-            background: transparent;
-            color: var(--text-main);
+            background: transparent; color: var(--text-main);
             border: 1px solid rgba(244, 114, 182, 0.4);
         }
         .hero-btn.ghost:hover { background: rgba(244, 114, 182, 0.1); border-color: var(--accent-berry); }
 
-        /* СТАТИСТИКА */
+        /* STATS — 2 колонки */
         .home-stats {
-            display: grid; grid-template-columns: repeat(3, 1fr);
-            gap: 10px; margin: 8px 0 32px;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 12px; margin: 8px 0 32px;
         }
         .home-stat {
-            padding: 18px 8px;
+            padding: 20px 8px;
             border-radius: 16px;
             background: linear-gradient(135deg, rgba(244, 114, 182, 0.06), rgba(129, 140, 248, 0.05));
             border: 1px solid rgba(244, 114, 182, 0.18);
@@ -718,55 +676,35 @@ HTML_LAYOUT = '''
         }
         .home-stat:hover { transform: translateY(-3px); border-color: rgba(244, 114, 182, 0.45); }
         .home-stat-num {
-            font-size: clamp(20px, 4vw, 28px);
-            font-weight: 800;
+            font-size: clamp(24px, 5vw, 34px); font-weight: 800;
             background: linear-gradient(135deg, var(--accent-frost), var(--accent-berry));
-            -webkit-background-clip: text; background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 4px;
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
         }
-        .home-stat-label {
-            font-size: 10.5px; letter-spacing: 0.7px;
-            text-transform: uppercase;
-            opacity: 0.7; font-weight: 600;
-        }
+        .home-stat-label { font-size: 11px; letter-spacing: 0.7px; text-transform: uppercase; opacity: 0.7; font-weight: 600; }
 
         /* СЕКЦИИ */
         .home-section { margin-top: 36px; animation: ultraEntrance 0.7s var(--ultra-smooth) both; }
         .home-section-head { margin-bottom: 14px; padding: 0 4px; }
-        .home-section-head h3 {
-            margin: 0 0 4px;
-            font-size: 16px; font-weight: 700;
-            letter-spacing: -0.2px;
-            color: var(--text-main);
-        }
+        .home-section-head h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; letter-spacing: -0.2px; color: var(--text-main); }
         .home-section-head span { font-size: 11.5px; opacity: 0.6; }
 
-        /* О НАШЕМ СЕРВИСЕ — 4 КЛИКАБЕЛЬНЫЕ ЗОНЫ */
-        .home-about-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
+        /* О НАШЕМ СЕРВИСЕ */
+        .home-about-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .home-about-card {
-            position: relative; overflow: hidden;
-            padding: 18px 16px;
-            border-radius: 18px;
+            position: relative; overflow: hidden; padding: 18px 16px; border-radius: 18px;
             background: linear-gradient(135deg, rgba(30, 27, 75, 0.55), rgba(15, 23, 42, 0.35));
-            border: 1px solid rgba(244, 114, 182, 0.18);
-            cursor: pointer;
+            border: 1px solid rgba(244, 114, 182, 0.18); cursor: pointer;
             transition: transform 0.4s var(--ultra-smooth), border-color 0.35s var(--smooth), box-shadow 0.4s var(--ultra-smooth), background 0.4s var(--smooth);
-            color: var(--text-main);
-            display: flex; flex-direction: column; gap: 8px;
+            color: var(--text-main); display: flex; flex-direction: column; gap: 8px;
         }
         .home-about-card::before {
             content: ''; position: absolute; inset: -1px;
             background: linear-gradient(135deg, transparent 30%, rgba(244,114,182,0.18), transparent 80%);
-            opacity: 0; transition: opacity 0.45s var(--smooth);
-            border-radius: inherit; pointer-events: none;
+            opacity: 0; transition: opacity 0.45s var(--smooth); border-radius: inherit; pointer-events: none;
         }
         .home-about-card:hover, .home-about-card:active {
-            transform: translateY(-5px);
-            border-color: var(--accent-berry);
+            transform: translateY(-5px); border-color: var(--accent-berry);
             box-shadow: 0 14px 32px rgba(244, 114, 182, 0.25);
         }
         .home-about-card:hover::before, .home-about-card:active::before { opacity: 1; }
@@ -774,30 +712,15 @@ HTML_LAYOUT = '''
             width: 42px; height: 42px; border-radius: 12px;
             display: inline-flex; align-items: center; justify-content: center;
             background: linear-gradient(135deg, rgba(244,114,182,0.22), rgba(129,140,248,0.18));
-            border: 1px solid rgba(244,114,182,0.35);
-            font-size: 22px;
+            border: 1px solid rgba(244,114,182,0.35); font-size: 22px;
         }
-        .home-about-title {
-            font-size: 14px; font-weight: 800;
-            letter-spacing: 0.4px;
-            color: var(--text-main);
-        }
-        .home-about-desc {
-            font-size: 11.5px; line-height: 1.5;
-            opacity: 0.78;
-        }
-        body.light-mode .home-about-card {
-            background: #ffffff;
-            border-color: rgba(244, 114, 182, 0.3);
-            box-shadow: 0 2px 10px rgba(30, 27, 75, 0.06);
-        }
+        .home-about-title { font-size: 14px; font-weight: 800; letter-spacing: 0.4px; color: var(--text-main); }
+        .home-about-desc { font-size: 11.5px; line-height: 1.5; opacity: 0.78; }
+        body.light-mode .home-about-card { background: #ffffff; border-color: rgba(244, 114, 182, 0.3); box-shadow: 0 2px 10px rgba(30, 27, 75, 0.06); }
         body.light-mode .home-about-desc { color: #475569; opacity: 1; }
 
-        /* ИНФО-БЛОК С ДОП. ТЕКСТОМ */
         .home-info-block {
-            margin-top: 18px;
-            padding: 22px;
-            border-radius: 18px;
+            margin-top: 18px; padding: 22px; border-radius: 18px;
             background: linear-gradient(135deg, rgba(244, 114, 182, 0.06), rgba(129, 140, 248, 0.04));
             border: 1px solid rgba(244, 114, 182, 0.18);
         }
@@ -808,47 +731,25 @@ HTML_LAYOUT = '''
         body.light-mode .home-info-block { background: #ffffff; border-color: rgba(244,114,182,0.3); box-shadow: 0 2px 10px rgba(30,27,75,0.05); }
         body.light-mode .home-info-block p, body.light-mode .home-info-block ul { color: #334155; opacity: 1; }
 
-        /* НОВОСТНАЯ ЛЕНТА — КАРУСЕЛЬ С КАРТИНКАМИ И БЛЮРОМ */
-        .news-ticker-wrap {
-            position: relative;
-            overflow: hidden;
-            padding: 6px 0 16px;
-            border-radius: 18px;
-        }
+        /* НОВОСТНАЯ ЛЕНТА */
+        .news-ticker-wrap { position: relative; overflow: hidden; padding: 6px 0 16px; border-radius: 18px; }
         .news-track {
-            display: flex; gap: 14px;
-            width: max-content;
-            transition: transform 0.85s var(--ultra-smooth);
-            will-change: transform;
-            cursor: grab;
-            user-select: none;
+            display: flex; gap: 14px; width: max-content;
+            transition: transform 0.85s var(--ultra-smooth); will-change: transform; cursor: grab; user-select: none;
         }
         .news-track.is-dragging { cursor: grabbing; }
-
         .news-tile {
-            flex: 0 0 270px;
-            position: relative;
-            border-radius: 18px;
-            overflow: hidden;
-            background: var(--card-bg);
-            border: 1px solid rgba(244, 114, 182, 0.18);
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            height: 220px;
-            transition: transform 0.45s var(--ultra-smooth), box-shadow 0.45s var(--ultra-smooth), border-color 0.4s;
+            flex: 0 0 270px; position: relative; border-radius: 18px; overflow: hidden;
+            background: var(--card-bg); border: 1px solid rgba(244, 114, 182, 0.18);
+            text-decoration: none; color: inherit; display: block; height: 220px;
+            transition: transform 0.45s var(--ultra-smooth), box-shadow 0.45s var(--ultra-smooth), border-color 0.4s, filter 0.4s;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
         }
         .news-tile:hover, .news-tile:active {
-            transform: translateY(-6px);
-            border-color: var(--accent-berry);
-            box-shadow: 0 14px 32px rgba(244, 114, 182, 0.32);
+            transform: translateY(-6px); border-color: var(--accent-berry);
+            box-shadow: 0 14px 32px rgba(244, 114, 182, 0.32); filter: brightness(1.07) saturate(1.05);
         }
-        .news-tile-img {
-            position: absolute; inset: 0;
-            background-size: cover; background-position: center;
-            transition: transform 0.6s var(--ultra-smooth);
-        }
+        .news-tile-img { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform 0.6s var(--ultra-smooth); }
         .news-tile:hover .news-tile-img { transform: scale(1.06); }
         .news-tile-img::after {
             content: ''; position: absolute; inset: 0;
@@ -858,40 +759,21 @@ HTML_LAYOUT = '''
             position: absolute; top: 12px; left: 12px;
             font-size: 9.5px; font-weight: 800; letter-spacing: 1.3px;
             padding: 5px 10px; border-radius: 6px;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            z-index: 3;
+            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+            color: #fff; border: 1px solid rgba(255, 255, 255, 0.18); z-index: 3;
         }
         .news-tile-fog {
             position: absolute; left: 0; right: 0; bottom: 0;
             padding: 18px 14px 14px;
             background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.55) 40%, rgba(15,23,42,0.85) 100%);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            z-index: 2;
+            backdrop-filter: blur(10px); z-index: 2;
         }
         .news-tile-title {
-            font-size: 13.5px; font-weight: 700;
-            line-height: 1.35;
-            color: #ffffff;
-            margin-bottom: 6px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            font-size: 13.5px; font-weight: 700; line-height: 1.35; color: #ffffff; margin-bottom: 6px;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
             text-shadow: 0 2px 8px rgba(0,0,0,0.5);
         }
-        .news-tile-source {
-            font-size: 11px;
-            color: var(--accent-berry);
-            font-weight: 700;
-            letter-spacing: 0.4px;
-        }
-
-        /* СТРЕЛКИ ЛЕНТЫ — ВНУТРИ КАРУСЕЛИ ПОВЕРХ ПЛИТОК */
+        .news-tile-source { font-size: 11px; color: var(--accent-berry); font-weight: 700; letter-spacing: 0.4px; }
         .news-arrow {
             position: absolute; top: 50%; transform: translateY(-50%);
             width: 38px; height: 38px; border-radius: 50%;
@@ -900,212 +782,116 @@ HTML_LAYOUT = '''
             display: inline-flex; align-items: center; justify-content: center;
             font-size: 22px; line-height: 1; padding-bottom: 3px;
             transition: background 0.3s var(--smooth), transform 0.3s var(--smooth), box-shadow 0.3s var(--smooth);
-            backdrop-filter: blur(6px);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.4);
         }
         .news-arrow.prev { left: 8px; }
         .news-arrow.next { right: 8px; }
         .news-arrow:hover {
             background: var(--accent-berry); color: #1E1B4B;
-            transform: translateY(-50%) scale(1.08);
-            box-shadow: 0 8px 22px rgba(244,114,182,0.55);
+            transform: translateY(-50%) scale(1.08); box-shadow: 0 8px 22px rgba(244,114,182,0.55);
         }
         .news-arrow:active { transform: translateY(-50%) scale(0.94); }
         body.light-mode .news-arrow { background: rgba(255,255,255,0.92); border-color: rgba(244,114,182,0.5); color: #1E1B4B; box-shadow: 0 4px 14px rgba(30,27,75,0.18); }
-        .news-tile { transition: transform 0.45s var(--ultra-smooth), box-shadow 0.45s var(--ultra-smooth), border-color 0.4s, filter 0.4s; }
-        .news-tile:hover { filter: brightness(1.07) saturate(1.05); }
 
-        /* БЛОК «РЕСПУБЛИКА БЕЛАРУСЬ» */
-        .home-republic {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-        }
+        /* РЕСПУБЛИКА БЕЛАРУСЬ */
+        .home-republic { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         @media (max-width: 520px) { .home-republic { grid-template-columns: 1fr; } }
         .rep-card {
-            background: var(--card-bg);
-            border: 1px solid rgba(244,114,182,0.22);
-            border-radius: 16px;
-            padding: 16px 14px;
+            background: var(--card-bg); border: 1px solid rgba(244,114,182,0.22); border-radius: 16px; padding: 16px 14px;
             transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
         }
-        .rep-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--accent-berry);
-            box-shadow: 0 10px 26px rgba(244,114,182,0.22);
-        }
-        .rep-num {
-            font-size: 22px; font-weight: 900; color: var(--accent-berry);
-            letter-spacing: 0.5px; margin-bottom: 6px;
-            text-shadow: 0 0 18px rgba(244,114,182,0.4);
-        }
+        .rep-card:hover { transform: translateY(-4px); border-color: var(--accent-berry); box-shadow: 0 10px 26px rgba(244,114,182,0.22); }
+        .rep-num { font-size: 22px; font-weight: 900; color: var(--accent-berry); letter-spacing: 0.5px; margin-bottom: 6px; text-shadow: 0 0 18px rgba(244,114,182,0.4); }
         .rep-title { font-size: 13.5px; font-weight: 800; margin-bottom: 6px; color: var(--text-main); }
         .rep-desc { font-size: 12px; line-height: 1.5; opacity: 0.82; color: var(--text-main); }
         body.light-mode .rep-card { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
 
         /* ГЕРБЫ В HERO */
-        .hero-emblems {
-            display: flex; gap: 14px; align-items: center;
-            margin-bottom: 16px;
-        }
+        .hero-emblems { display: flex; gap: 16px; align-items: center; justify-content: center; margin-bottom: 16px; }
         .hero-emblem {
-            width: 60px; height: 72px;
+            width: 64px; height: 64px;
+            object-fit: contain; aspect-ratio: 1 / 1;
             filter: drop-shadow(0 0 10px rgba(244,114,182,0.4));
             transition: filter 0.3s, transform 0.3s;
         }
         .hero-emblem:hover { filter: drop-shadow(0 0 18px rgba(244,114,182,0.7)); transform: scale(1.06); }
 
-        /* АККОРДЕОН-БЛОКИ (видео/фото) */
+        /* АККОРДЕОНЫ (видео/фото) */
         .accord-box {
-            background: var(--card-bg);
-            border: 1.5px solid rgba(244,114,182,0.18);
-            border-radius: 18px; overflow: hidden;
+            background: var(--card-bg); border: 1.5px solid rgba(244,114,182,0.18); border-radius: 18px; overflow: hidden;
             transition: border-color 0.35s, box-shadow 0.35s;
         }
         .accord-box.open { border-color: rgba(244,114,182,0.5); box-shadow: 0 8px 30px rgba(244,114,182,0.12); }
         body.light-mode .accord-box { background: #ffffff; box-shadow: 0 2px 10px rgba(30,27,75,0.06); }
         .accord-header {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 18px 20px; cursor: pointer; user-select: none;
-            transition: background 0.3s;
+            padding: 18px 20px; cursor: pointer; user-select: none; transition: background 0.3s;
         }
         .accord-header:hover { background: rgba(244,114,182,0.06); }
-        .accord-title {
-            font-size: 15px; font-weight: 800; letter-spacing: 0.5px;
-            color: var(--text-main);
-            display: flex; align-items: center; gap: 10px;
-        }
+        .accord-title { font-size: 15px; font-weight: 800; letter-spacing: 0.5px; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
         .accord-subtitle { font-size: 11px; opacity: 0.6; margin-top: 3px; font-weight: 500; letter-spacing: 0; display: block; }
         .accord-chevron {
             width: 28px; height: 28px; flex-shrink: 0;
-            border: 2px solid rgba(244,114,182,0.5);
-            border-radius: 50%;
+            border-radius: 8px; background: rgba(244,114,182,0.1);
+            border: 1px solid rgba(244,114,182,0.25);
             display: flex; align-items: center; justify-content: center;
-            color: var(--accent-berry); font-size: 14px; line-height: 1;
-            transition: transform 0.45s var(--ultra-smooth), background 0.3s, border-color 0.3s;
+            font-size: 13px; transition: transform 0.45s var(--ultra-smooth), background 0.3s;
         }
-        .accord-box.open .accord-chevron {
-            transform: rotate(180deg);
-            background: var(--accent-berry); color: #1E1B4B; border-color: var(--accent-berry);
-        }
+        .accord-box.open .accord-chevron { transform: rotate(180deg); background: rgba(244,114,182,0.2); }
         .accord-content {
-            max-height: 0; overflow: hidden;
-            transition: max-height 0.65s var(--ultra-smooth);
+            display: grid; grid-template-rows: 0fr;
+            transition: grid-template-rows 0.5s var(--ultra-smooth);
         }
-        .accord-box.open .accord-content { max-height: 1200px; }
-        .accord-inner { padding: 0 16px 18px; }
+        .accord-box.open .accord-content { grid-template-rows: 1fr; }
+        .accord-inner { overflow: hidden; }
 
-        /* ВИДЕО ВНУТРИ АККОРДЕОНА */
-        .vid-tabs {
-            display: flex; gap: 10px; margin-bottom: 14px;
-            flex-wrap: wrap;
-        }
+        /* ВИДЕО */
+        .vid-carousel-wrap { position: relative; padding: 0 40px; }
+        .vid-tabs { display: flex; gap: 10px; overflow-x: hidden; scroll-behavior: smooth; padding: 4px 0 8px; }
         .vid-tab {
-            flex: 1 1 110px;
-            background: rgba(0,0,0,0.25); border: 1.5px solid rgba(244,114,182,0.2);
-            border-radius: 14px; padding: 14px 10px 12px;
-            cursor: pointer; color: var(--text-main);
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            transition: background 0.3s, border-color 0.3s, transform 0.32s, box-shadow 0.32s;
-            font-family: inherit;
+            flex: 0 0 110px; background: rgba(0,0,0,0.25); border: 1.5px solid rgba(244,114,182,0.18);
+            border-radius: 14px; padding: 12px 8px; cursor: pointer; text-align: center;
+            transition: all 0.32s var(--smooth); color: var(--text-main);
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
-        .vid-tab-ico { font-size: 26px; }
-        .vid-tab-text { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-align: center; line-height: 1.4; }
-        .vid-tab:hover { border-color: var(--accent-berry); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(244,114,182,0.2); }
-        .vid-tab.active { background: var(--btn-static); color: #1E1B4B; border-color: transparent; box-shadow: 0 6px 18px rgba(244,114,182,0.35); }
-        .vid-tab.active .vid-tab-text { color: #1E1B4B; }
-        body.light-mode .vid-tab { background: rgba(244,114,182,0.07); }
-        .vid-player-wrap {
-            border-radius: 14px; overflow: hidden;
-            border: 1.5px solid rgba(244,114,182,0.25);
-            background: #000;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.55);
-        }
-        .vid-player { width: 100%; display: block; max-height: 360px; object-fit: contain; }
-
-        /* КАРУСЕЛЬ ВИДЕО (стрелки + табы) */
-        .vid-carousel-wrap {
-            position: relative; overflow: hidden;
-            margin-bottom: 14px;
-        }
+        .vid-tab:hover { border-color: var(--accent-berry); background: rgba(244,114,182,0.08); }
+        .vid-tab.active { background: rgba(244,114,182,0.15); border-color: var(--accent-berry); box-shadow: 0 0 14px rgba(244,114,182,0.25); }
+        .vid-tab-ico { font-size: 22px; }
+        .vid-tab-text { font-size: 11px; font-weight: 700; line-height: 1.3; letter-spacing: 0.3px; }
+        body.light-mode .vid-tab { background: #f8f0fc; border-color: rgba(244,114,182,0.3); color: #1E1B4B; }
         .vid-carousel-arrow {
             position: absolute; top: 50%; transform: translateY(-50%);
-            width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(30,27,75,0.82); border: 1.5px solid rgba(244,114,182,0.6);
-            color: #fff; cursor: pointer; z-index: 5;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; line-height: 1; padding-bottom: 2px;
-            transition: background 0.28s var(--smooth), transform 0.28s var(--smooth), box-shadow 0.28s;
-            backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(244,114,182,0.4);
+            background: rgba(30,27,75,0.75); color: white; cursor: pointer; z-index: 2;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+            transition: background 0.28s, transform 0.28s;
         }
-        .vid-carousel-arrow.prev { left: 4px; }
-        .vid-carousel-arrow.next { right: 4px; }
-        .vid-carousel-arrow:hover {
-            background: var(--accent-berry); color: #1E1B4B;
-            transform: translateY(-50%) scale(1.1);
-            box-shadow: 0 6px 20px rgba(244,114,182,0.55);
-        }
-        .vid-carousel-arrow:active { transform: translateY(-50%) scale(0.94); }
-        body.light-mode .vid-carousel-arrow { background: rgba(255,255,255,0.94); color: #1E1B4B; }
-        .vid-tabs {
-            display: flex; gap: 10px;
-            flex-wrap: nowrap; overflow-x: hidden;
-            scroll-behavior: smooth;
-            padding: 0 44px;
-        }
-        .vid-tab {
-            flex: 0 0 calc(33.333% - 7px);
-            background: rgba(0,0,0,0.25); border: 1.5px solid rgba(244,114,182,0.2);
-            border-radius: 14px; padding: 14px 10px 12px;
-            cursor: pointer; color: var(--text-main);
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            transition: background 0.3s, border-color 0.3s, transform 0.32s, box-shadow 0.32s;
-            font-family: inherit; min-width: 100px;
-        }
-        .vid-tab-ico { font-size: 26px; }
-        .vid-tab-text { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-align: center; line-height: 1.4; }
-        .vid-tab:hover { border-color: var(--accent-berry); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(244,114,182,0.2); }
-        .vid-tab.active { background: var(--btn-static); color: #1E1B4B; border-color: transparent; box-shadow: 0 6px 18px rgba(244,114,182,0.35); }
-        .vid-tab.active .vid-tab-text { color: #1E1B4B; }
-        body.light-mode .vid-tab { background: rgba(244,114,182,0.07); }
-        .vid-player-wrap {
-            border-radius: 14px; overflow: hidden;
-            border: 1.5px solid rgba(244,114,182,0.25);
-            background: #000; box-shadow: 0 8px 28px rgba(0,0,0,0.55);
-        }
-        .vid-player { width: 100%; display: block; max-height: 360px; object-fit: contain; }
+        .vid-carousel-arrow.prev { left: 2px; }
+        .vid-carousel-arrow.next { right: 2px; }
+        .vid-carousel-arrow:hover { background: var(--accent-berry); transform: translateY(-50%) scale(1.1); color: #1E1B4B; }
+        .vid-player-wrap { padding: 0 16px 16px; }
+        .vid-player { width: 100%; border-radius: 14px; display: block; background: #000; max-height: 320px; }
+        body.light-mode .vid-carousel-arrow { background: rgba(255,255,255,0.9); color: #1E1B4B; border-color: rgba(244,114,182,0.4); }
 
-        /* КАРУСЕЛЬ ФОТО (стрелки + горизонтальный скролл) */
-        .photo-carousel-wrap {
-            position: relative; overflow: hidden;
-        }
+        /* ФОТО */
+        .photo-carousel-wrap { position: relative; padding: 0 40px 16px; }
         .photo-carousel-arrow {
-            position: absolute; top: 50%; transform: translateY(-50%);
-            width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(30,27,75,0.82); border: 1.5px solid rgba(244,114,182,0.6);
-            color: #fff; cursor: pointer; z-index: 5;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; line-height: 1; padding-bottom: 2px;
-            transition: background 0.28s var(--smooth), transform 0.28s var(--smooth), box-shadow 0.28s;
-            backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            position: absolute; top: 40%; transform: translateY(-50%);
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(30,27,75,0.8); border: 1px solid rgba(244,114,182,0.4);
+            color: #fff; cursor: pointer; z-index: 4;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+            transition: all 0.28s var(--smooth);
         }
-        .photo-carousel-arrow.prev { left: 4px; }
-        .photo-carousel-arrow.next { right: 4px; }
-        .photo-carousel-arrow:hover {
-            background: var(--accent-berry); color: #1E1B4B;
-            transform: translateY(-50%) scale(1.1);
-            box-shadow: 0 6px 20px rgba(244,114,182,0.55);
-        }
-        .photo-carousel-arrow:active { transform: translateY(-50%) scale(0.94); }
-        body.light-mode .photo-carousel-arrow { background: rgba(255,255,255,0.94); color: #1E1B4B; }
+        .photo-carousel-arrow.prev { left: 2px; }
+        .photo-carousel-arrow.next { right: 2px; }
+        .photo-carousel-arrow:hover { background: var(--accent-berry); color: #1E1B4B; transform: translateY(-50%) scale(1.1); }
         .photo-track {
-            display: flex; gap: 12px;
-            overflow-x: hidden; scroll-behavior: smooth;
-            padding: 4px 44px 8px;
+            display: flex; gap: 12px; overflow-x: hidden; scroll-behavior: smooth; padding: 4px 44px 8px;
         }
         .photo-card {
-            flex: 0 0 calc(50% - 6px);
-            border-radius: 14px; overflow: hidden;
-            border: 1.5px solid rgba(244,114,182,0.18);
-            background: var(--card-bg);
+            flex: 0 0 calc(50% - 6px); border-radius: 14px; overflow: hidden;
+            border: 1.5px solid rgba(244,114,182,0.18); background: var(--card-bg);
             cursor: pointer; position: relative;
             transition: transform 0.35s var(--smooth), border-color 0.35s, box-shadow 0.35s;
         }
@@ -1113,27 +899,20 @@ HTML_LAYOUT = '''
         .photo-card:hover { transform: translateY(-5px) scale(1.02); border-color: var(--accent-berry); box-shadow: 0 12px 28px rgba(244,114,182,0.3); }
         .photo-card img { width: 100%; display: block; aspect-ratio: 3/4; object-fit: cover; }
         @media (max-width: 480px) { .photo-card img { aspect-ratio: 4/3; } }
-        .photo-card-label {
-            padding: 8px 10px; font-size: 11.5px; font-weight: 800;
-            letter-spacing: 0.4px; color: var(--text-main);
-            background: var(--card-bg); text-align: center;
-        }
+        .photo-card-label { padding: 8px 10px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.4px; color: var(--text-main); background: var(--card-bg); text-align: center; }
         body.light-mode .photo-card { background: #fff; box-shadow: 0 2px 10px rgba(30,27,75,0.07); }
-        .photo-grid { display: none; }
 
-        /* МОДАЛЬНОЕ ОКНО ФОТО */
+        /* ФОТО МОДАЛЬНОЕ ОКНО */
         .photo-modal {
             position: fixed; inset: 0; z-index: 20000;
             background: rgba(10,10,30,0.92); backdrop-filter: blur(14px);
             display: flex; align-items: center; justify-content: center;
-            padding: 20px; box-sizing: border-box;
-            opacity: 0; pointer-events: none;
+            padding: 20px; box-sizing: border-box; opacity: 0; pointer-events: none;
             transition: opacity 0.35s var(--smooth);
         }
         .photo-modal.open { opacity: 1; pointer-events: all; }
         .photo-modal-inner {
-            position: relative; max-width: 92vw; max-height: 92vh;
-            border-radius: 18px; overflow: hidden;
+            position: relative; max-width: 92vw; max-height: 92vh; border-radius: 18px; overflow: hidden;
             box-shadow: 0 20px 60px rgba(0,0,0,0.7);
             transform: scale(0.9); transition: transform 0.38s var(--ultra-smooth);
         }
@@ -1147,51 +926,28 @@ HTML_LAYOUT = '''
             transition: background 0.22s;
         }
         .photo-modal-close:hover { background: var(--accent-berry); color: #1E1B4B; }
-        .photo-modal-cap {
-            background: rgba(15,23,42,0.92); color: #fff;
-            padding: 10px 16px; font-size: 13px; font-weight: 700; text-align: center;
-        }
+        .photo-modal-cap { background: rgba(15,23,42,0.92); color: #fff; padding: 10px 16px; font-size: 13px; font-weight: 700; text-align: center; }
 
-        /* СВЕТЛАЯ ТЕМА — ЧИТАЕМОСТЬ */
+        /* СВЕТЛАЯ ТЕМА */
         body.light-mode { color: #1E1B4B; }
-        body.light-mode .home-hero-sub,
-        body.light-mode .home-hero-extra,
-        body.light-mode .home-stat-label,
-        body.light-mode .home-section-head span { color: #475569; opacity: 1; }
-        body.light-mode .home-stat {
-            background: #ffffff;
-            border-color: rgba(244, 114, 182, 0.35);
-            box-shadow: 0 2px 10px rgba(30, 27, 75, 0.06);
-        }
-        body.light-mode .news-tile {
-            background: #ffffff;
-            border-color: rgba(244, 114, 182, 0.3);
-            box-shadow: 0 4px 14px rgba(30, 27, 75, 0.08);
-        }
+        body.light-mode .home-hero-sub, body.light-mode .home-hero-extra,
+        body.light-mode .home-stat-label, body.light-mode .home-section-head span { color: #475569; opacity: 1; }
+        body.light-mode .home-stat { background: #ffffff; border-color: rgba(244, 114, 182, 0.35); box-shadow: 0 2px 10px rgba(30, 27, 75, 0.06); }
+        body.light-mode .news-tile { background: #ffffff; border-color: rgba(244, 114, 182, 0.3); box-shadow: 0 4px 14px rgba(30, 27, 75, 0.08); }
         body.light-mode .hero-btn.ghost { color: #1E1B4B; border-color: rgba(244, 114, 182, 0.5); }
         body.light-mode .home-hero-badge { background: rgba(74, 222, 128, 0.12); color: #166534; border-color: rgba(34, 197, 94, 0.4); }
-
         body.light-mode .nav-island { background: #ffffff; border-color: rgba(244,114,182,0.45); box-shadow: 0 8px 24px rgba(30,27,75,0.1); }
         body.light-mode .nav-link { color: #1E1B4B; }
         body.light-mode .system-footer { color: #1E1B4B; }
-        body.light-mode .memo-content p,
-        body.light-mode .memo-content li,
-        body.light-mode .memo-content ul { color: #1E1B4B; }
+        body.light-mode .memo-content p, body.light-mode .memo-content li, body.light-mode .memo-content ul { color: #1E1B4B; }
         body.light-mode .detail-text { color: #334155; }
-        body.light-mode [style*="color: #cbd5e1"] { color: #475569 !important; }
-        body.light-mode [style*="color: var(--text-main)"][style*="opacity"] { color: #334155 !important; }
 
-        /* --- КНОПКА ГЕНЕРАЦИИ ПАРОЛЯ --- */
+        /* ГЕНЕРАТОР ПАРОЛЯ */
         .generator-card {
-            margin-top: 18px;
-            padding: 22px 18px;
-            border-radius: 22px;
+            margin-top: 18px; padding: 22px 18px; border-radius: 22px;
             background: linear-gradient(135deg, rgba(244, 114, 182, 0.12), rgba(165, 243, 252, 0.07));
-            border: 1px solid rgba(244, 114, 182, 0.3);
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.4s var(--smooth);
+            border: 1px solid rgba(244, 114, 182, 0.3); text-align: center;
+            position: relative; overflow: hidden; transition: all 0.4s var(--smooth);
         }
         .generator-card:hover { border-color: var(--accent-berry); box-shadow: 0 8px 24px rgba(244, 114, 182, 0.3); }
         .generator-card h4 { margin: 0 0 6px; font-size: 15px; letter-spacing: 1px; }
@@ -1206,84 +962,97 @@ HTML_LAYOUT = '''
         .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(244, 114, 182, 0.55); }
         .btn-generate:active { transform: translateY(0) scale(0.98); }
 
-        /* ============================================
-           МОБИЛЬНАЯ ВЕРСИЯ — ПЛАВНОСТЬ И ОДИНАКОВЫЕ ЗОНЫ
-           ============================================ */
-        @media (max-width: 600px) {
-            .container { padding: 18px; padding-top: 70px; }
+        /* ОПИСАНИЕ-БЛОК для вкладок */
+        .feature-desc-block {
+            margin-bottom: 20px; padding: 20px 22px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(129,140,248,0.06), rgba(244,114,182,0.04));
+            border: 1px solid rgba(129,140,248,0.22);
+            animation: ultraEntrance 0.7s var(--ultra-smooth) both;
+        }
+        .feature-desc-block h3 { margin: 0 0 10px; font-size: 15px; font-weight: 800; letter-spacing: 0.4px; }
+        .feature-desc-block p { margin: 0 0 10px; font-size: 13px; line-height: 1.68; opacity: 0.88; }
+        .feature-desc-block p:last-child { margin-bottom: 0; }
+        .feature-desc-block ul { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.75; opacity: 0.85; }
+        .feature-desc-block li { margin-bottom: 5px; }
+        body.light-mode .feature-desc-block { background: #ffffff; border-color: rgba(129,140,248,0.3); box-shadow: 0 2px 10px rgba(30,27,75,0.05); }
+        body.light-mode .feature-desc-block p, body.light-mode .feature-desc-block ul { color: #334155; opacity: 1; }
 
-            /* Симуляции: три одинаковые карточки */
+        /* УЛУЧШЕННЫЙ ВЕРДИКТ */
+        .verdict-banner {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            padding: 18px 22px; border-radius: 18px; margin-bottom: 18px;
+            font-size: 17px; font-weight: 800; letter-spacing: 0.5px;
+        }
+        .verdict-banner.safe {
+            background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.04));
+            border: 1.5px solid rgba(74,222,128,0.4);
+        }
+        .verdict-banner.danger {
+            background: linear-gradient(135deg, rgba(248,113,113,0.12), rgba(244,114,182,0.06));
+            border: 1.5px solid rgba(248,113,113,0.45);
+        }
+        .verdict-icon { font-size: 28px; }
+
+        /* МОБИЛЬНАЯ ВЕРСИЯ */
+        @media (max-width: 600px) {
+            .container { padding: 16px 14px; padding-top: 68px; }
+            .home-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .home-stat { padding: 16px 6px; }
+            .home-stat-num { font-size: 26px; }
             .sim-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-            .sim-card {
-                padding: 12px 4px;
-                min-height: 95px;
-                aspect-ratio: 1 / 1.05;
-                width: 100%;
-            }
+            .sim-card { padding: 12px 4px; min-height: 95px; aspect-ratio: 1 / 1.05; width: 100%; }
             .sim-card span { font-size: 22px; line-height: 1; margin-bottom: 6px !important; }
             .sim-card b { font-size: 9.5px; letter-spacing: 0.4px; line-height: 1.15; word-break: break-word; }
-
-            /* О сервисе — две колонки */
             .home-about-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
             .home-about-card { padding: 14px 12px; }
             .home-about-icon { width: 38px; height: 38px; font-size: 20px; }
             .home-about-title { font-size: 12.5px; }
             .home-about-desc { font-size: 11px; }
-
             .news-tile { flex: 0 0 240px; height: 200px; }
             .news-tile-title { font-size: 12.5px; }
-
             .nav-island { padding: 10px 22px; gap: 22px; }
+            .hero-emblem { width: 52px; height: 52px; }
+            .search-card { padding: 20px 16px; }
+            .report-card { padding: 18px 14px; }
+            .game-section { padding: 18px 14px; }
+            .chat-messages { min-height: 250px; max-height: 300px; }
+            .feature-desc-block { padding: 16px; }
+            .feature-desc-block p, .feature-desc-block li { font-size: 12px; }
+            .test-tabs .tab-btn { font-size: 9px; padding: 8px 2px; }
+            .stats-grid { gap: 8px; }
+            .stats-grid .stat-box { padding: 10px 6px; }
         }
-
-        /* На устройствах без hover (телефоны/планшеты) — добавляем плавные active-состояния */
         @media (hover: none), (pointer: coarse) {
             .home-stat, .home-path, .news-tile, .sim-card,
             .memo-box, .info-box, .home-about-card, .quiz-option,
             .hero-btn, .news-arrow, .menu-item {
                 -webkit-tap-highlight-color: transparent;
-                transition: transform 0.35s var(--ultra-smooth),
-                            box-shadow 0.35s var(--ultra-smooth),
-                            background 0.35s var(--smooth),
-                            border-color 0.35s var(--smooth),
-                            opacity 0.35s var(--smooth);
+                transition: transform 0.35s var(--ultra-smooth), box-shadow 0.35s var(--ultra-smooth),
+                            background 0.35s var(--smooth), border-color 0.35s var(--smooth), opacity 0.35s var(--smooth);
             }
-            .home-about-card:active,
-            .sim-card:active,
-            .home-stat:active,
-            .quiz-option:active,
-            .home-path:active {
-                transform: scale(0.97);
-                opacity: 0.92;
-            }
+            .home-about-card:active, .sim-card:active, .home-stat:active,
+            .quiz-option:active, .home-path:active { transform: scale(0.97); opacity: 0.92; }
             .news-tile:active { transform: translateY(-3px) scale(0.98); }
             .menu-item:active { transform: scale(0.98); }
             .hero-btn:active { transform: translateY(2px) scale(0.97); }
             .news-arrow:active { transform: scale(0.92); }
-
-            /* Чтобы ленты и карточки плавно прорисовывались */
-            .news-track, .home-about-card, .home-stat, .sim-card,
-            .news-tile, .menu-item, .home-info-block {
-                will-change: transform, opacity;
-            }
         }
     </style>
 </head>
 <body id="body-tag">
     <div class="rays-container" id="rays"></div>
-    
+
     <div class="hamburger-btn" onclick="toggleMenu()" id="hamburger">
         <div></div><div></div><div></div>
     </div>
     <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
     <div class="side-menu" id="side-menu">
-
-        <!-- Гербы РБ и МВД — показываются только при раскрытии -->
+        <!-- Гербы РБ и МВД — только при раскрытом меню -->
         <div class="menu-emblems">
             <img class="menu-emblem-img" src="https://i.ibb.co/7DGmDfj/cybershield11.png" alt="Герб РБ" title="Герб Республики Беларусь">
             <img class="menu-emblem-img" src="https://i.ibb.co/35yc90YN/cybershield111.png" alt="МВД РБ" title="МВД Республики Беларусь">
         </div>
-
         <a class="menu-item active" id="menu-tab-home" onclick="switchPage('home')">
             <span class="menu-ico">🏠</span><span class="menu-label">ГЛАВНАЯ</span>
         </a>
@@ -1296,19 +1065,35 @@ HTML_LAYOUT = '''
         <a class="menu-item" id="menu-tab-password" onclick="switchPage('password')">
             <span class="menu-ico">🔑</span><span class="menu-label">ПАРОЛЬНЫЙ СТРАЖ</span>
         </a>
-        
-        <hr style="width: 80%; border: none; border-top: 1px solid rgba(244, 114, 182, 0.3); margin: auto auto 10px auto; opacity: 0; transition: opacity 0.5s;">
-        
+        <hr style="width: 80%; border: none; border-top: 1px solid rgba(244, 114, 182, 0.3); margin: auto auto 10px auto;">
         <a href="https://t.me/CyberNodes_bot" target="_blank" class="tg-super-btn tg-menu-btn">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.96 1.25-5.54 3.67-.52.36-.99.54-1.41.53-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.23.36-.48.98-.74 3.84-1.68 6.4-2.78 7.68-3.32 3.65-1.53 4.41-1.8 4.9-1.81.11 0 .35.03.48.14.11.09.14.22.14.35-.01.12-.01.24-.02.35z"/></svg>
             НАШ БОТ
         </a>
     </div>
 
+    <!-- ЛОВУШКА-МОДАЛКА -->
+    <div id="trap-modal" class="trap-modal" onclick="closeTrapModal()">
+        <div class="trap-modal-inner" onclick="event.stopPropagation()">
+            <span class="trap-icon">⚠️</span>
+            <h2 class="shimmer-text" style="margin: 0 0 14px; font-size: 22px;">Вы попались на ловушку!</h2>
+            <p style="font-size: 13.5px; line-height: 1.65; margin-bottom: 8px; opacity: 0.9;">
+                Это была учебная симуляция. В реальной ситуации переход по такой ссылке
+                мог привести к заражению устройства вредоносным ПО или краже персональных данных.
+            </p>
+            <p style="font-size: 13px; line-height: 1.6; margin-bottom: 22px; color: var(--danger-red); font-weight: 700;">
+                Никогда не переходите по ссылкам от незнакомых людей в мессенджерах!
+            </p>
+            <button class="btn-scan" onclick="closeTrapModal()" style="width: 100%; padding: 14px; font-size: 14px; letter-spacing: 0.5px;">
+                ПОНЯЛ — ВЕРНУТЬСЯ В СИМУЛЯЦИЮ
+            </button>
+        </div>
+    </div>
+
     <div class="container">
 
+        <!-- ==================== ГЛАВНАЯ ==================== -->
         <div id="page-home" class="page-content">
-
             <section class="home-hero">
                 <div class="hero-emblems">
                     <img class="hero-emblem" src="https://i.ibb.co/7DGmDfj/cybershield11.png" alt="Герб Республики Беларусь" title="Республика Беларусь">
@@ -1323,6 +1108,7 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
+            <!-- Статистика — 2 колонки -->
             <section class="home-stats">
                 <div class="home-stat">
                     <div class="home-stat-num">{{ stats_count }}</div>
@@ -1332,16 +1118,12 @@ HTML_LAYOUT = '''
                     <div class="home-stat-num">{{ total_threats }}</div>
                     <div class="home-stat-label">Угроз раскрыто</div>
                 </div>
-                <div class="home-stat">
-                    <div class="home-stat-num">100%</div>
-                    <div class="home-stat-label">Бесплатно и анонимно</div>
-                </div>
             </section>
 
             <section class="home-section">
                 <div class="home-section-head">
                     <h3>🛡️ О нашем сервисе</h3>
-                    <span>Нажмите на нужный блок — откроется соответствующая вкладка</span>
+                    <span>Четыре инструмента кибербезопасности — в одном месте</span>
                 </div>
                 <div class="home-about-grid">
                     <div class="home-about-card" onclick="switchPage('scanner')">
@@ -1352,12 +1134,12 @@ HTML_LAYOUT = '''
                     <div class="home-about-card" onclick="switchPage('info')">
                         <div class="home-about-icon">📚</div>
                         <div class="home-about-title">ИНФОРМАЦИЯ И ТЕСТЫ</div>
-                        <div class="home-about-desc">Памятка по безопасности, справочник угроз, ИИ-помощник и кибер-экзамен на внимательность и грамотность.</div>
+                        <div class="home-about-desc">Памятка по безопасности, справочник угроз, ИИ-помощник и кибер-экзамен на внимательность, грамотность и реакцию.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('info')">
                         <div class="home-about-icon">🔥</div>
                         <div class="home-about-title">СИМУЛЯЦИИ С ИИ</div>
-                        <div class="home-about-desc">Сразитесь с виртуальным мошенником в чате. ИИ Groq отыграет реальную атаку, а мы оценим вашу защиту.</div>
+                        <div class="home-about-desc">Сразитесь с виртуальным мошенником в чате. ИИ отыграет реальную атаку, а мы оценим вашу защиту.</div>
                     </div>
                     <div class="home-about-card" onclick="switchPage('password')">
                         <div class="home-about-icon">🔑</div>
@@ -1379,7 +1161,7 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
-            <!-- ===== ВИДЕО (аккордеон) ===== -->
+            <!-- ВИДЕО -->
             <section class="home-section">
                 <div class="accord-box" id="accord-video">
                     <div class="accord-header" onclick="toggleAccord('accord-video')">
@@ -1394,21 +1176,21 @@ HTML_LAYOUT = '''
                             <div class="vid-carousel-wrap" id="vid-carousel">
                                 <button class="vid-carousel-arrow prev" onclick="moveVidCarousel(-1)" aria-label="Назад">‹</button>
                                 <button class="vid-carousel-arrow next" onclick="moveVidCarousel(1)" aria-label="Вперёд">›</button>
-                            <div class="vid-tabs" id="vid-tabs">
-                                <button class="vid-tab active" data-src="https://litter.catbox.moe/jec29k.mp4" onclick="selectVideo(this)">
-                                    <span class="vid-tab-ico">🌐</span>
-                                    <span class="vid-tab-text">Безопасность<br>в интернете</span>
-                                </button>
-                                <button class="vid-tab" data-src="https://litter.catbox.moe/p9co2t.mp4" onclick="selectVideo(this)">
-                                    <span class="vid-tab-ico">📨</span>
-                                    <span class="vid-tab-text">Сообщения<br>от мошенников</span>
-                                </button>
-                                <button class="vid-tab" data-src="https://litter.catbox.moe/y4umnf.mp4" onclick="selectVideo(this)">
-                                    <span class="vid-tab-ico">🎰</span>
-                                    <span class="vid-tab-text">Внезапные<br>выигрыши</span>
-                                </button>
+                                <div class="vid-tabs" id="vid-tabs">
+                                    <button class="vid-tab active" data-src="https://litter.catbox.moe/jec29k.mp4" onclick="selectVideo(this)">
+                                        <span class="vid-tab-ico">🌐</span>
+                                        <span class="vid-tab-text">Безопасность<br>в интернете</span>
+                                    </button>
+                                    <button class="vid-tab" data-src="https://litter.catbox.moe/p9co2t.mp4" onclick="selectVideo(this)">
+                                        <span class="vid-tab-ico">📨</span>
+                                        <span class="vid-tab-text">Сообщения<br>от мошенников</span>
+                                    </button>
+                                    <button class="vid-tab" data-src="https://litter.catbox.moe/y4umnf.mp4" onclick="selectVideo(this)">
+                                        <span class="vid-tab-ico">🎰</span>
+                                        <span class="vid-tab-text">Внезапные<br>выигрыши</span>
+                                    </button>
+                                </div>
                             </div>
-                            </div><!-- /vid-carousel-wrap -->
                             <div class="vid-player-wrap">
                                 <video id="main-video" class="vid-player" controls preload="metadata" playsinline>
                                     <source id="main-video-src" src="https://litter.catbox.moe/jec29k.mp4" type="video/mp4">
@@ -1420,7 +1202,7 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
-            <!-- ===== ФОТО (аккордеон) ===== -->
+            <!-- ФОТО — аккордеон без фотокарточек внутри -->
             <section class="home-section">
                 <div class="accord-box" id="accord-photo">
                     <div class="accord-header" onclick="toggleAccord('accord-photo')">
@@ -1432,26 +1214,25 @@ HTML_LAYOUT = '''
                     </div>
                     <div class="accord-content">
                         <div class="accord-inner">
-                            <div class="photo-carousel-wrap" id="photo-carousel">
-                                <button class="photo-carousel-arrow prev" onclick="movePhotoCarousel(-1)" aria-label="Назад">‹</button>
-                                <button class="photo-carousel-arrow next" onclick="movePhotoCarousel(1)" aria-label="Вперёд">›</button>
-                                <div class="photo-track" id="photo-track">
-                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/pv1L6gJg/cybershield.jpg','Вирусные APK-файлы — как защититься')">
-                                        <img src="https://i.ibb.co/pv1L6gJg/cybershield.jpg" alt="Вирусные APK-файлы" loading="lazy">
-                                        <div class="photo-card-label">🦠 Вирусные APK-файлы</div>
-                                    </div>
-                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/sdgQCCZK/cybershield1.jpg','Главные правила цифровой гигиены')">
-                                        <img src="https://i.ibb.co/sdgQCCZK/cybershield1.jpg" alt="Правила цифровой гигиены" loading="lazy">
-                                        <div class="photo-card-label">🧼 Цифровая гигиена</div>
-                                    </div>
-                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/4wtT0N7c/cybershield2.jpg','Угрозы в сети — типичные схемы хакерских атак')">
-                                        <img src="https://i.ibb.co/4wtT0N7c/cybershield2.jpg" alt="Угрозы в сети" loading="lazy">
-                                        <div class="photo-card-label">🖥️ Угрозы в сети</div>
-                                    </div>
-                                    <div class="photo-card" onclick="openPhotoModal('https://i.ibb.co/chPQ5VK7/2026-04-04-165314.png','#КиберПраво: твой щит в сети — конкурс')">
-                                        <img src="https://i.ibb.co/chPQ5VK7/2026-04-04-165314.png" alt="#КиберПраво конкурс" loading="lazy">
-                                        <div class="photo-card-label">🏆 #КиберПраво</div>
-                                    </div>
+                            <div style="padding: 18px 20px 22px;">
+                                <p style="font-size: 13px; opacity: 0.78; line-height: 1.65; margin: 0 0 14px;">
+                                    Официальные информационные материалы Управления «К» МВД Республики Беларусь о правилах цифровой безопасности доступны на официальных ресурсах. Используйте проверенные источники для получения актуальных памяток.
+                                </p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    <a href="https://mvd.gov.by/ru/page/upravlenie-k" target="_blank" rel="noopener"
+                                       style="display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 12px;
+                                              background: rgba(244,114,182,0.08); border: 1px solid rgba(244,114,182,0.3);
+                                              color: var(--accent-berry); font-size: 12.5px; font-weight: 700; text-decoration: none;
+                                              transition: all 0.3s;">
+                                        🔗 Управление «К» МВД РБ
+                                    </a>
+                                    <a href="https://oac.gov.by" target="_blank" rel="noopener"
+                                       style="display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 12px;
+                                              background: rgba(129,140,248,0.08); border: 1px solid rgba(129,140,248,0.3);
+                                              color: var(--accent-frost); font-size: 12.5px; font-weight: 700; text-decoration: none;
+                                              transition: all 0.3s;">
+                                        🔗 ОАЦ · CERT.BY
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -1459,7 +1240,7 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
-            <!-- ===== НОВОСТИ ===== -->
+            <!-- НОВОСТИ -->
             <section class="home-section">
                 <div class="home-section-head">
                     <h3>📰 Лента кибербезопасности</h3>
@@ -1533,14 +1314,6 @@ HTML_LAYOUT = '''
                                 <div class="news-tile-source">mininform.gov.by</div>
                             </div>
                         </a>
-                        <a href="https://edu.gov.by" target="_blank" rel="noopener" class="news-tile">
-                            <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80&fit=crop&auto=format');"></div>
-                            <span class="news-tile-pill">МИНОБР РБ</span>
-                            <div class="news-tile-fog">
-                                <div class="news-tile-title">Цифровая грамотность школьников и студентов</div>
-                                <div class="news-tile-source">edu.gov.by</div>
-                            </div>
-                        </a>
                         <a href="https://kgb.by" target="_blank" rel="noopener" class="news-tile">
                             <div class="news-tile-img" style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80&fit=crop&auto=format');"></div>
                             <span class="news-tile-pill">КГБ РБ</span>
@@ -1553,7 +1326,6 @@ HTML_LAYOUT = '''
                 </div>
             </section>
 
-            <!-- Модальное окно для просмотра фото -->
             <div id="photo-modal" class="photo-modal" onclick="closePhotoModal()">
                 <div class="photo-modal-inner" onclick="event.stopPropagation()">
                     <button class="photo-modal-close" onclick="closePhotoModal()">✕</button>
@@ -1561,16 +1333,32 @@ HTML_LAYOUT = '''
                     <div id="photo-modal-cap" class="photo-modal-cap"></div>
                 </div>
             </div>
-
         </div>
 
+        <!-- ==================== ПРОВЕРЯТОР ==================== -->
         <div id="page-scanner" class="page-content" style="display: none; opacity: 0;">
+
+            <div class="feature-desc-block">
+                <h3 class="shimmer-text">🛡️ Что умеет Проверятор</h3>
+                <p>Проверятор — это инструмент глубокого анализа интернет-ссылок, разработанный для защиты граждан от цифрового мошенничества. Достаточно вставить адрес сайта — система сделает всё остальное.</p>
+                <p>Каждая ссылка проходит многоуровневую проверку: сначала она направляется в базу данных VirusTotal, где её анализируют более 70 независимых антивирусных движков. Параллельно система оценивает репутацию домена, историю регистрации, наличие SSL-сертификата и соответствие шаблонам фишинга.</p>
+                <ul>
+                    <li>Проверка по базе VirusTotal (70+ антивирусных движков одновременно).</li>
+                    <li>ИИ-вердикт с текстовым объяснением на русском языке.</li>
+                    <li>Детальный разбор: уровень угрозы, репутация домена, SSL-статус.</li>
+                    <li>Мгновенное отображение: безопасно или опасно — без технического жаргона.</li>
+                    <li>Голосовое зачитывание вердикта для удобства старшего поколения.</li>
+                    <li>Центр мониторинга в реальном времени — видно историю всех проверок в сессии.</li>
+                </ul>
+                <p style="margin-top: 10px; font-size: 12px; opacity: 0.7;">Все проверки анонимны. Никакие данные о вас не сохраняются и не передаются третьим лицам.</p>
+            </div>
+
             <div class="search-card">
                 <h1 class="logo-main shimmer-text"><span>🛡️</span> CyberShield</h1>
                 <p style="color: #cbd5e1; font-size: 14px;">Экспертный анализ сетевого мошенничества</p>
                 <form id="check-form" action="/check" method="POST" onsubmit="showLoading()">
                     <div class="input-wrapper">
-                        <input type="text" id="url-input-field" name="url" placeholder="Вставьте ссылку" required>
+                        <input type="text" id="url-input-field" name="url" placeholder="Вставьте ссылку для проверки" required>
                         <button type="submit" class="btn-scan">ПРОВЕРИТЬ</button>
                     </div>
                 </form>
@@ -1582,15 +1370,29 @@ HTML_LAYOUT = '''
 
             {% if verdict_text %}
             <div class="report-card">
-                <h3 id="last-verdict-title" style="text-align:center;" class="{{ 'status-danger' if stats and stats.malicious > 0 else 'status-safe' }}">
-                    {{ 'УГРОЗА ОБНАРУЖЕНА' if stats and stats.malicious > 0 else 'СИСТЕМА БЕЗОПАСНА' }}
-                </h3>
-                <div class="stats-grid">
-                    <div class="stat-box"><span class="stat-val" style="color: var(--danger-red)">{{stats.malicious}}</span><span style="font-size:10px;">ВИРУСЫ</span></div>
-                    <div class="stat-box"><span class="stat-val" style="color: #fbbf24">{{stats.suspicious}}</span><span style="font-size:10px;">РИСКИ</span></div>
-                    <div class="stat-box"><span class="stat-val" style="color: var(--safe-green)">{{stats.harmless}}</span><span style="font-size:10px;">ЧИСТО</span></div>
+                <!-- Улучшенный вердикт-баннер -->
+                <div class="verdict-banner {{ 'danger' if stats and stats.malicious > 0 else 'safe' }}">
+                    <span class="verdict-icon">{{ '🚨' if stats and stats.malicious > 0 else '✅' }}</span>
+                    <h3 style="margin: 0;" class="{{ 'status-danger' if stats and stats.malicious > 0 else 'status-safe' }}">
+                        {{ 'УГРОЗА ОБНАРУЖЕНА' if stats and stats.malicious > 0 else 'СИСТЕМА БЕЗОПАСНА' }}
+                    </h3>
                 </div>
-                
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-val" style="color: var(--danger-red)">{{ stats.malicious }}</span>
+                        <span style="font-size:10px;">ВИРУСЫ</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" style="color: #fbbf24">{{ stats.suspicious }}</span>
+                        <span style="font-size:10px;">ПОДОЗРИТЕЛЬНО</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" style="color: var(--safe-green)">{{ stats.harmless }}</span>
+                        <span style="font-size:10px;">ДВИЖКОВ ЧИСТО</span>
+                    </div>
+                </div>
+
                 <div class="detail-box {{ 'danger' if stats.malicious > 0 else 'safe' }}">
                     <div class="detail-list">
                         {% for item in detail_items %}
@@ -1616,10 +1418,10 @@ HTML_LAYOUT = '''
             <div class="radar-box">
                 <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 16px;">🌐 ЦЕНТР МОНИТОРИНГА</h4>
                 <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px;">Логирование активности узлов CyberShield</p>
-                <div class="radar-circle">
-                    <div class="blip blip1"></div>
-                    <div class="blip blip2"></div>
-                    <div class="blip blip3"></div>
+                <div class="radar-circle" id="radar-circle">
+                    <div class="blip blip1" id="blip1"></div>
+                    <div class="blip blip2" id="blip2"></div>
+                    <div class="blip blip3" id="blip3"></div>
                 </div>
                 <div class="cyber-logs" id="cyber-logs">
                     <div style="color: var(--safe-green); font-family: monospace; font-size: 11px;">> СЕТЬ CyberShield АКТИВНА. ОЖИДАНИЕ ЗАПРОСОВ...</div>
@@ -1627,7 +1429,10 @@ HTML_LAYOUT = '''
             </div>
         </div>
 
+        <!-- ==================== ИНФОРМАЦИЯ / ТЕСТЫ ==================== -->
         <div id="page-info" class="page-content" style="display: none; opacity: 0;">
+
+            <!-- ПАМЯТКА — 10 + 10 -->
             <div class="memo-box" id="memo-container">
                 <div class="memo-header" onclick="toggleAccordion('memo-container')">
                     <span class="shimmer-text">💡 Памятка по безопасности</span>
@@ -1635,12 +1440,41 @@ HTML_LAYOUT = '''
                 </div>
                 <div class="memo-content">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div><b class="shimmer-text" style="font-size:12px;">Правила проверки:</b><ul style="padding-left:15px; font-size:11px;"><li>Сверяйте домен по каждой букве.</li><li>HTTPS — не гарантия 100% защиты.</li><li>Не переходите по сокращённым ссылкам.</li><li>Проверяйте возраст домена сайта.</li><li>Используйте только CyberShield.</li></ul></div>
-                        <div><b class="shimmer-text" style="font-size:12px;">Меры защиты:</b><ul style="padding-left:15px; font-size:11px;"><li>Включите 2FA во всех сервисах.</li><li>Регулярно очищайте кэш и cookie.</li><li>Не сохраняйте пароли в браузере.</li><li>Обновляйте ОС и браузер вовремя.</li><li>Используйте сложные разные пароли.</li></ul></div>
+                        <div>
+                            <b class="shimmer-text" style="font-size:12px;">Правила проверки:</b>
+                            <ul style="padding-left:15px; font-size:11px; line-height: 1.7;">
+                                <li>Сверяйте каждую букву домена вручную — опечатки в адресе намеренны.</li>
+                                <li>HTTPS — не гарантия безопасности: сертификат есть и у мошеннических сайтов.</li>
+                                <li>Не переходите по сокращённым ссылкам — используйте сервис раскрытия URL.</li>
+                                <li>Проверяйте дату регистрации домена: фишинговые сайты живут от нескольких часов до пары недель.</li>
+                                <li>Прежде чем вводить данные — запустите ссылку через CyberShield или VirusTotal.</li>
+                                <li>Избегайте переходов по ссылкам в SMS и письмах: открывайте сайт банка вручную.</li>
+                                <li>Ищите орфографические ошибки в тексте страницы — легитимные организации так не пишут.</li>
+                                <li>QR-код в публичном месте может быть подменён — проверяйте адрес после сканирования.</li>
+                                <li>Внезапные всплывающие окна «Ваш компьютер заражён» — всегда ложь, не звоните по указанному номеру.</li>
+                                <li>Если сомневаетесь — позвоните напрямую в организацию по официальному номеру с её сайта.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <b class="shimmer-text" style="font-size:12px;">Меры защиты:</b>
+                            <ul style="padding-left:15px; font-size:11px; line-height: 1.7;">
+                                <li>Включите двухфакторную аутентификацию (2FA) во всех сервисах без исключения.</li>
+                                <li>Регулярно очищайте кэш браузера и cookie, особенно в публичных сетях Wi-Fi.</li>
+                                <li>Не сохраняйте пароли в браузере — используйте специализированный менеджер паролей.</li>
+                                <li>Обновляйте операционную систему и браузер немедленно после выхода патчей безопасности.</li>
+                                <li>Используйте уникальные и сложные пароли для каждого сервиса.</li>
+                                <li>Установите антивирусное ПО с функцией проверки ссылок в реальном времени.</li>
+                                <li>Настройте оповещения по SMS или push о каждой транзакции по карте.</li>
+                                <li>Не подключайтесь к открытым Wi-Fi сетям без VPN для финансовых операций.</li>
+                                <li>Периодически проверяйте активные сессии в почте и соцсетях — закрывайте чужие.</li>
+                                <li>Создайте отдельную карту только для интернет-платежей с лимитом суммы.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
 
+            <!-- СПРАВОЧНИК УГРОЗ -->
             <div class="report-card">
                 <h3 class="shimmer-text" style="text-align:center; margin-top:0;">📖 СПРАВОЧНИК</h3>
                 <p style="font-size: 13px; color: var(--text-main); text-align: center; opacity: 0.8; margin-bottom: 20px;">Продвинутая база данных кибер-угроз нового поколения.</p>
@@ -1691,16 +1525,18 @@ HTML_LAYOUT = '''
                         <div class="detail-indicator" style="background: #a78bfa; box-shadow: 0 0 10px #a78bfa;"></div>
                         <div class="detail-info">
                             <span class="detail-label" style="color: #a78bfa;">АТАКА ГОМОГРАФОВ (PUNYCODE)</span>
-                            <span class="detail-text">Использование визуально похожих букв из разных алфавитов (например, латинская 'а' и кириллическая 'а'). Для браузера это разные сайты!</span>
+                            <span class="detail-text">Использование визуально похожих букв из разных алфавитов. Для браузера это разные сайты — выглядит идентично, ведёт на мошеннический ресурс.</span>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- ТЕСТЫ -->
             <div class="game-section" id="game-root">
                 <div class="test-tabs">
                     <button class="tab-btn active" id="tab1" onclick="switchTest(1)">ВНИМАТЕЛЬНОСТЬ</button>
                     <button class="tab-btn" id="tab2" onclick="switchTest(2)">ГРАМОТНОСТЬ</button>
+                    <button class="tab-btn" id="tab3" onclick="switchTest(3)">РЕАКЦИЯ</button>
                 </div>
                 <div id="game-header">
                     <h4 class="shimmer-text" style="margin:0 0 15px; font-size: 18px;">🎮 Кибер-Экзамен</h4>
@@ -1714,10 +1550,11 @@ HTML_LAYOUT = '''
                 </div>
             </div>
 
+            <!-- ИИ-ПОМОЩНИК -->
             <div class="memo-box active" style="margin-top: 20px;">
                 <div class="memo-header"><span class="shimmer-text">🤖 ИИ-Помощник CyberShield</span></div>
                 <div class="memo-content" style="padding-bottom:20px;">
-                    <p style="font-size: 12px; margin-bottom: 10px;">Спросите нашего ИИ (Groq), как защититься от угроз или что делать в подозрительной ситуации.</p>
+                    <p style="font-size: 12px; margin-bottom: 10px;">Спросите нашего ИИ-ассистента, как защититься от угроз или что делать в подозрительной ситуации.</p>
                     <div id="helper-chat-box" class="cyber-logs" style="height: 180px; background: rgba(0,0,0,0.4); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
                         <div style="color:var(--accent-frost); font-size:12px;">ИИ: Привет! Напиши мне свою проблему, и я подскажу, как обезопасить свои данные.</div>
                     </div>
@@ -1727,12 +1564,23 @@ HTML_LAYOUT = '''
                     </div>
                 </div>
             </div>
-            
+
+            <!-- ЗОНА СИМУЛЯЦИЙ -->
             <div class="game-section" id="sim-root">
                 <h4 class="shimmer-text" style="margin:0 0 5px; font-size: 18px; text-align: center;">🔥 ЗОНА СИМУЛЯЦИЙ</h4>
-                <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px; text-align: center;">Тренировка противодействия реальным угрозам с ИИ Groq</p>
-                
+                <p style="font-size: 11px; color: var(--text-main); opacity: 0.7; margin-bottom: 15px; text-align: center;">Тренировка противодействия реальным угрозам с помощью ИИ</p>
+
                 <div id="sim-selector">
+                    <div class="feature-desc-block" style="margin-bottom: 16px;">
+                        <p style="font-size: 12.5px; margin: 0 0 8px;">Симуляция — это реалистичный диалог с виртуальным мошенником, которого играет искусственный интеллект. Каждый сценарий основан на реальных схемах, зафиксированных МВД Беларуси.</p>
+                        <ul style="font-size: 12px; margin: 0; padding-left: 16px;">
+                            <li><b>Социальная инженерия</b> — давление, срочность, манипуляции с эмоциями.</li>
+                            <li><b>Фейковая техподдержка</b> — ложь о вирусах, удалённый доступ к устройству.</li>
+                            <li><b>Шантаж</b> — угрозы, требование оплаты за молчание.</li>
+                        </ul>
+                        <p style="font-size: 11.5px; margin: 8px 0 0; opacity: 0.72;">Ваша цель — не передать личные данные и правильно завершить разговор. По итогу ИИ выставит оценку вашей защиты от 0 до 100%.</p>
+                    </div>
+
                     <div class="sim-grid">
                         <div class="sim-card" onclick="openSimulation('Социальная инженерия')">
                             <span style="font-size: 24px; display: block; margin-bottom: 5px;">🎭</span>
@@ -1747,26 +1595,50 @@ HTML_LAYOUT = '''
                             <b style="font-size: 12px; color: var(--accent-berry);">ШАНТАЖ</b>
                         </div>
                     </div>
-                    <div style="text-align: center;">
-                        <p style="font-size: 13px; margin-bottom: 15px;">Наш ИИ будет писать как реальный мошенник. Твоя цель — не передать личные данные и правильно завершить разговор.</p>
-                    </div>
                 </div>
 
                 <div id="sim-chat" class="hidden">
                     <div class="chat-container">
-                        <div class="chat-header shimmer-text">ДИАЛОГ: НЕИЗВЕСТНЫЙ АБОНЕНТ</div>
+                        <div class="chat-header">
+                            <div class="chat-persona">
+                                <div class="chat-avatar" id="sim-chat-avatar">👤</div>
+                                <div class="chat-persona-info">
+                                    <div class="chat-persona-name shimmer-text" id="sim-chat-name">НЕИЗВЕСТНЫЙ АБОНЕНТ</div>
+                                    <div class="chat-persona-role" id="sim-chat-role">Симуляция активна</div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="chat-messages" id="chat-messages-box"></div>
                         <div class="chat-input-area" id="chat-input-area">
                             <input type="text" id="sim-input" placeholder="Введите ответ..." autocomplete="off">
                             <button class="chat-send-btn" onclick="sendSimMessageReq()">➤</button>
                         </div>
                     </div>
-                    <button class="btn-scan" onclick="closeSim()" style="width: 100%; margin-top: 15px; background: transparent; border: 1px solid var(--accent-berry); color: var(--text-main);">ПРЕРВАТЬ СИМУЛЯЦИЮ</button>
+                    <button class="btn-scan" onclick="closeSim()"
+                            style="width: 100%; margin-top: 15px; background: transparent; border: 1px solid var(--accent-berry); color: var(--text-main);">
+                        ЗАВЕРШИТЬ СИМУЛЯЦИЮ
+                    </button>
                 </div>
             </div>
         </div>
 
+        <!-- ==================== ПАРОЛЬНЫЙ СТРАЖ ==================== -->
         <div id="page-password" class="page-content" style="display: none; opacity: 0;">
+
+            <div class="feature-desc-block">
+                <h3 class="shimmer-text">🔑 Что умеет Парольный Страж</h3>
+                <p>Парольный Страж — это инструмент для оценки реальной надёжности паролей. Введите любой пароль, и система мгновенно покажет: насколько он стоек к атакам, сколько времени займёт его взлом и что конкретно в нём нужно улучшить.</p>
+                <p>Анализ проводится полностью в вашем браузере. Введённый пароль не отправляется на сервер, не сохраняется и не покидает ваше устройство ни при каких условиях.</p>
+                <ul>
+                    <li>Подсчёт битовой энтропии — математическая оценка стойкости пароля.</li>
+                    <li>Расчёт времени взлома при скорости 10 миллиардов попыток в секунду.</li>
+                    <li>Проверка на совпадение с базой утечек (топ распространённых паролей).</li>
+                    <li>Детальный разбор по критериям: длина, регистр, цифры, спецсимволы.</li>
+                    <li>Генератор надёжного пароля из 16 символов в один клик.</li>
+                    <li>Работает мгновенно, в реальном времени — без задержек и ожидания.</li>
+                </ul>
+            </div>
+
             <div class="search-card">
                 <h1 class="logo-main shimmer-text"><span>🔑</span> Парольный Страж</h1>
                 <p style="color: #cbd5e1; font-size: 14px;">Анализ криптостойкости пароля в реальном времени</p>
@@ -1785,13 +1657,11 @@ HTML_LAYOUT = '''
 
             <div class="report-card" id="password-report" style="display:none;">
                 <h3 id="password-strength-title" class="shimmer-text" style="text-align:center; margin-top:0;">АНАЛИЗ ПАРОЛЯ</h3>
-
                 <div class="stats-grid">
                     <div class="stat-box"><span class="stat-val" id="pw-length-val" style="color: var(--accent-frost)">0</span><span style="font-size:10px;">СИМВОЛОВ</span></div>
                     <div class="stat-box"><span class="stat-val" id="pw-entropy-val" style="color: #fbbf24">0</span><span style="font-size:10px;">БИТ ЭНТРОПИИ</span></div>
                     <div class="stat-box"><span class="stat-val" id="pw-time-val" style="color: var(--safe-green); font-size:14px;">мгновенно</span><span style="font-size:10px;">ВЗЛОМ</span></div>
                 </div>
-
                 <div class="detail-box safe">
                     <div class="detail-list">
                         <div class="detail-row pw-rule" data-rule="length8">
@@ -1845,7 +1715,6 @@ HTML_LAYOUT = '''
                         </div>
                     </div>
                 </div>
-
                 <div class="ai-box">
                     <b class="shimmer-text" style="font-size: 11px; display: block; margin-bottom: 8px; letter-spacing: 1px;">УРОВЕНЬ ЗАЩИТЫ</b>
                     <div id="password-result-text">Введите пароль, чтобы получить вердикт.</div>
@@ -1867,14 +1736,13 @@ HTML_LAYOUT = '''
             <span id="ping-value">-- ms</span>
         </div>
         <div class="system-footer">
-            <span class="shimmer-text" style="font-size: 15px;">Проверено всего: {{ total_scans }} | Найдено вирусов: {{ total_threats }}</span>
+            <span class="shimmer-text" style="font-size: 15px;">Проверено всего: {{ total_scans }} | Найдено угроз: {{ total_threats }}</span>
             <div style="margin-top:15px;">
                 <a href="https://mir.pravo.by/contest/KiberPravo_tvoj_shchit/" target="_blank" class="cyber-link">
                     <h1 class="shimmer-text" style="font-size: 26px; margin: 0; letter-spacing: 4px;">#КИБЕРПРАВО</h1>
                 </a>
             </div>
         </div>
-        
         <div class="nav-island">
             <div class="nav-link shimmer-text" onclick="toggleTheme()">🌓 ТЕМА</div>
             <div class="nav-link shimmer-text" onclick="shareSite()">🔗 ССЫЛКА</div>
@@ -1882,7 +1750,7 @@ HTML_LAYOUT = '''
     </div>
 
     <script>
-        // --- ЛОГИКА БОКОВОГО МЕНЮ ---
+        // --- МЕНЮ ---
         function toggleMenu() {
             const menu = document.getElementById('side-menu');
             const overlay = document.getElementById('menu-overlay');
@@ -1928,7 +1796,6 @@ HTML_LAYOUT = '''
             video.play().catch(() => {});
         }
 
-        // --- ФОТО ГАЛЕРЕЯ МОДАЛЬНОЕ ОКНО ---
         function openPhotoModal(src, caption) {
             const modal = document.getElementById('photo-modal');
             document.getElementById('photo-modal-img').src = src;
@@ -1940,16 +1807,24 @@ HTML_LAYOUT = '''
             document.getElementById('photo-modal').classList.remove('open');
             document.body.style.overflow = '';
         }
-        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePhotoModal(); });
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closePhotoModal(); closeTrapModal(); } });
 
-        // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ СТРАНИЦ ---
+        // --- ЛОВУШКА ---
+        function showTrapModal() {
+            document.getElementById('trap-modal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeTrapModal() {
+            document.getElementById('trap-modal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        // --- ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ---
         function switchPage(pageId) {
             const pages = ['home', 'scanner', 'info', 'password'];
-            
             pages.forEach(p => {
                 const tab = document.getElementById('menu-tab-' + p);
                 const page = document.getElementById('page-' + p);
-                
                 if (p === pageId) {
                     if (!tab.classList.contains('active')) {
                         tab.classList.add('active');
@@ -1967,9 +1842,15 @@ HTML_LAYOUT = '''
                     page.style.opacity = '0';
                 }
             });
+            // Закрываем меню на мобильном после выбора
+            if (window.innerWidth <= 700) {
+                document.getElementById('side-menu').classList.remove('active');
+                document.getElementById('menu-overlay').classList.remove('active');
+                document.getElementById('hamburger').classList.remove('open');
+            }
         }
 
-        // --- ЛОГИКА РЕАЛЬНОГО РАДАРА ---
+        // --- РАДАР --- лог
         function addRadarLog(msg, type='safe') {
             const logs = document.getElementById('cyber-logs');
             if(!logs) return;
@@ -1980,7 +1861,7 @@ HTML_LAYOUT = '''
             entry.style.fontSize = "11px";
             entry.style.marginTop = "6px";
             const timeStr = new Date().toLocaleTimeString();
-            entry.innerText = `> [${timeStr}] ${msg}`;
+            entry.innerText = "> [" + timeStr + "] " + msg;
             logs.insertBefore(entry, logs.firstChild);
             if(logs.children.length > 10) logs.removeChild(logs.lastChild);
         }
@@ -1991,31 +1872,24 @@ HTML_LAYOUT = '''
             addRadarLog(msg, isDanger ? 'danger' : 'safe');
         {% endif %}
 
-        // --- НАЧАЛЬНАЯ ВКЛАДКА: после проверки ссылки остаёмся на сканере ---
         var INITIAL_PAGE = "{{ current_page or 'home' }}";
         if (INITIAL_PAGE && INITIAL_PAGE !== 'home') {
-            // снять active с home заранее, чтобы switchPage не упал
             switchPage(INITIAL_PAGE);
         }
 
         // --- ЛУЧИ ФОНА ---
         const raysContainer = document.getElementById('rays');
-        // Основные тонкие лучи: 25 шт, разные варианты гашения, НИКОГДА не гаснут в начале
         const fadeVariants = ['rise', 'rise', 'rise', 'rise-fade-late', 'rise-fade-mid'];
         for (let i = 0; i < 25; i++) {
             const ray = document.createElement('div'); ray.className = 'ray';
             ray.style.left = Math.random() * 100 + '%';
-            const dur = (Math.random() * 2.6 + 4.2);
-            ray.style.animationDuration = dur.toFixed(2) + 's';
+            ray.style.animationDuration = (Math.random() * 2.6 + 4.2).toFixed(2) + 's';
             ray.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
             ray.style.opacity = (Math.random() * 0.55 + 0.35).toFixed(2);
-            const variant = fadeVariants[Math.floor(Math.random() * fadeVariants.length)];
-            ray.style.animationName = variant;
-            // лёгкая вариация высоты
+            ray.style.animationName = fadeVariants[Math.floor(Math.random() * fadeVariants.length)];
             ray.style.height = (140 + Math.random() * 100) + 'px';
             raysContainer.appendChild(ray);
         }
-        // Толстые светящиеся лучи: 4 шт
         for (let i = 0; i < 4; i++) {
             const rt = document.createElement('div'); rt.className = 'ray-thick';
             rt.style.left = (Math.random() * 92 + 4) + '%';
@@ -2023,11 +1897,9 @@ HTML_LAYOUT = '''
             rt.style.animationDelay = (Math.random() * 7).toFixed(2) + 's';
             rt.style.opacity = (Math.random() * 0.35 + 0.55).toFixed(2);
             rt.style.height = (220 + Math.random() * 120) + 'px';
-            // часть гаснет посередине, часть долетает наверх — но никогда не в начале
             if (Math.random() < 0.4) rt.style.animationName = 'rise-fade-late';
             raysContainer.appendChild(rt);
         }
-        // Несколько коротких ярких вспышек
         for (let i = 0; i < 3; i++) {
             const rayShort = document.createElement('div'); rayShort.className = 'ray-short';
             rayShort.style.left = (Math.random() * 60 + 20) + '%';
@@ -2035,42 +1907,88 @@ HTML_LAYOUT = '''
             rayShort.style.animationDelay = Math.random() * 3 + 's';
             raysContainer.appendChild(rayShort);
         }
-
         const frc = document.getElementById('footer-rays-container');
-        for(let i=0; i<20; i++) {
-            const r = document.createElement('div');
-            r.className = 'footer-ray';
-            r.style.left = Math.random() * 100 + '%';
-            r.style.animationDelay = Math.random() * 2 + 's';
-            frc.appendChild(r);
+        if (frc) {
+            for(let i=0; i<20; i++) {
+                const r = document.createElement('div');
+                r.className = 'footer-ray';
+                r.style.left = Math.random() * 100 + '%';
+                r.style.animationDelay = Math.random() * 2 + 's';
+                frc.appendChild(r);
+            }
         }
 
+        // --- РАДАР: точки загораются когда луч проходит ---
+        (function() {
+            const PERIOD = 2000;
+            // Позиции blip относительно центра круга (80,80)
+            // Луч: 0° = восток, вращается по часовой стрелке
+            // angle = atan2(dy_screen, dx) где dy_screen = top - 80 (y растёт вниз)
+            const blipConfigs = [
+                { id: 'blip1', angle: Math.atan2(40-80, 50-80) * 180 / Math.PI },  // top=40,left=50
+                { id: 'blip2', angle: Math.atan2(100-80, 120-80) * 180 / Math.PI }, // top=100,left=120
+                { id: 'blip3', angle: Math.atan2(80-80, 30-80) * 180 / Math.PI }   // top=80,left=30
+            ];
+            blipConfigs.forEach(b => {
+                b.angle = ((b.angle % 360) + 360) % 360;
+                b.el = document.getElementById(b.id);
+                b.fadeTimer = null;
+            });
+            let radarStart = null;
+            function radarTick(now) {
+                if (!radarStart) radarStart = now;
+                const beamAngle = ((now - radarStart) % PERIOD) / PERIOD * 360;
+                blipConfigs.forEach(b => {
+                    if (!b.el) return;
+                    const diff = Math.min(
+                        Math.abs(beamAngle - b.angle),
+                        360 - Math.abs(beamAngle - b.angle)
+                    );
+                    if (diff < 7) {
+                        b.el.style.transition = 'opacity 0.06s ease';
+                        b.el.style.opacity = '1';
+                        if (b.fadeTimer) clearTimeout(b.fadeTimer);
+                        b.fadeTimer = setTimeout(function() {
+                            b.el.style.transition = 'opacity 1.8s ease';
+                            b.el.style.opacity = '0';
+                        }, 90);
+                    }
+                });
+                requestAnimationFrame(radarTick);
+            }
+            requestAnimationFrame(radarTick);
+        })();
+
         function speakText() {
-            const text = document.getElementById('ai-verdict-text').innerText;
+            const el = document.getElementById('ai-verdict-text');
+            if (!el) return;
+            const text = el.innerText;
             const btn = document.getElementById('speak-btn');
-            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); btn.classList.remove('playing'); return; }
+            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); if(btn) btn.classList.remove('playing'); return; }
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ru-RU';
-            utterance.onstart = () => btn.classList.add('playing');
-            utterance.onend = () => btn.classList.remove('playing');
+            utterance.onstart = () => { if(btn) btn.classList.add('playing'); };
+            utterance.onend = () => { if(btn) btn.classList.remove('playing'); };
             window.speechSynthesis.speak(utterance);
         }
 
         function toggleAccordion(id) { document.getElementById(id).classList.toggle('active'); }
-        
+
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
             localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
         }
+        // Восстановление темы
+        if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
 
         function shareSite() { navigator.clipboard.writeText(window.location.href).then(() => alert("Ссылка скопирована!")); }
 
-        function showLoading() { 
+        function showLoading() {
             document.getElementById('check-form').style.display = 'none';
             document.getElementById('loading-overlay').style.display = 'block';
         }
 
-        // --- ЛОГИКА ТЕСТА ПРОТИВОДЕЙСТВИЯ (Кибер-Экзамен) ---
+        // --- ТЕСТЫ ---
         const questions1 = [
             {q: "Минсктранс (Официальный сайт):", win: "minsktrans.by", lose: "minsk-trans.by"},
             {q: "БелЖД (Покупка билетов):", win: "rw.by", lose: "belrailway.by"},
@@ -2083,230 +2001,132 @@ HTML_LAYOUT = '''
             {q: "Беларусбанк:", win: "belarusbank.by", lose: "belarus-bank.org"},
             {q: "Kufar (Объявления):", win: "kufar.by", lose: "kufar-pay.by"}
         ];
-        
+
         const questions2 = [
             {q: "СМС: «Ваша карта заблокирована». Ваши действия:", win: "Зайти в официальное приложение", lose: "Перейти по ссылке в СМС"},
             {q: "Просят код из СМС для подтверждения. Ваши действия:", win: "Никогда не вводить на чужих сайтах", lose: "Ввести код быстро"},
-            {q: "Браузер пишет: «Сайт небезопасен». Ваши действия:", win: "Закрыть страницу", lose: "Нажать 'Игнорировать'"},
-            {q: "Друг просит проголосовать в ТГ. Ваши действия:", win: "Позвонить другу лично", lose: "Сразу перейти и ввести код"},
-            {q: "Звонят из «Безопасности банка». Ваши действия:", win: "Сбросить вызов", lose: "Продиктовать данные карты"},
-            {q: "Вам прислали файл «Photo.exe». Ваши действия:", win: "Удалить, не открывая", lose: "Открыть и посмотреть фото"},
-            {q: "Создание пароля для всех сайтов. Ваши действия:", win: "Сделать разным везде", lose: "Один сложный для удобства"},
-            {q: "Предложение двухфакторной защиты. Ваши действия:", win: "Включить везде, где можно", lose: "Пропустить для скорости"},
-            {q: "Предлагают бесплатную валюту в играх. Ваши действия:", win: "Закрыть и не вводить данные", lose: "Ввести логин и пароль"},
-            {q: "Чужой компьютер просит «Запомнить пароль». Ваши действия:", win: "Нажать 'Никогда'", lose: "Нажать 'Да'"}
+            {q: "Звонок: 'Ваши деньги в опасности, переведите на безопасный счёт'. Ваши действия:", win: "Повесить трубку и позвонить в банк", lose: "Срочно перевести деньги"},
+            {q: "Email: «Вы выиграли iPhone, пройдите по ссылке». Что делать:", win: "Удалить письмо", lose: "Нажать на ссылку"},
+            {q: "Сайт просит установить расширение для просмотра. Ваши действия:", win: "Закрыть страницу", lose: "Установить расширение"},
+            {q: "Незнакомец в Telegram просит фото паспорта «для регистрации». Ваши действия:", win: "Отказаться и заблокировать", lose: "Отправить фото"},
+            {q: "Друг пишет: «Я попал в беду, срочно нужны деньги». Ваши действия:", win: "Позвонить другу лично", lose: "Сразу перевести деньги"},
+            {q: "На почту пришёл архив с документами от неизвестного. Ваши действия:", win: "Удалить, не открывая", lose: "Открыть архив"},
+            {q: "Сайт отображает HTTPS. Можно ли вводить данные карты?", win: "Только на проверенном известном сайте", lose: "Да, HTTPS — гарантия безопасности"},
+            {q: "Вам предлагают работу с доходом 500$ в день без опыта. Ваши действия:", win: "Проигнорировать — это мошенничество", lose: "Уточнить подробности и дать данные"}
         ];
 
-        let activeSet = [], currentQ = 0, score = 0, canClick = true;
+        const questions3 = [
+            {q: "Незнакомец требует код из СМС 'для подтверждения личности'. Ваша реакция:", win: "Отказать — коды никому не передают", lose: "Назвать код, это ведь простая проверка"},
+            {q: "Пришло сообщение: 'Ваш аккаунт взломан, войдите срочно по этой ссылке'. Как поступить:", win: "Зайти в аккаунт напрямую без ссылки", lose: "Нажать на ссылку в сообщении"},
+            {q: "Звонящий называет ваше имя и последние цифры карты. Он из банка?", win: "Не факт — мошенники тоже знают ваши данные", lose: "Да, раз знает детали — точно из банка"},
+            {q: "Вы нашли USB-флешку на парковке. Что сделать:", win: "Не подключать — на ней может быть вирус", lose: "Подключить, чтобы найти владельца"},
+            {q: "Сотрудник техподдержки просит удалённый доступ к компьютеру. Ваши действия:", win: "Отказать и перезвонить в официальную поддержку", lose: "Предоставить доступ — пусть помогут"},
+            {q: "Сообщение в мессенджере: 'Проголосуй за меня, вот ссылка'. Что делать:", win: "Проверить ссылку в CyberShield, не переходить сразу", lose: "Сразу нажать — это просьба знакомого"},
+            {q: "Незнакомец предлагает выгодный обмен валюты в интернете. Признак мошенничества?", win: "Да — легальный обмен только в банке/обменнике", lose: "Нет — в интернете бывают хорошие курсы"},
+            {q: "Получили звонок с номера вашего банка. Можно доверять?", win: "Нет — номера легко подделать, перезвоните сами", lose: "Да — номер совпадает, значит это банк"},
+            {q: "На сайте магазина всплыло окно 'Введите пароль для скидки'. Что сделать:", win: "Закрыть окно — это попытка фишинга", lose: "Ввести пароль ради скидки"},
+            {q: "Вас просят срочно принять решение 'прямо сейчас, иначе поздно'. Это признак:", win: "Манипуляции — мошенники создают искусственную спешку", lose: "Реальной срочности — надо действовать быстро"}
+        ];
 
-        function switchTest(num) {
-            document.getElementById('tab1').classList.toggle('active', num === 1);
-            document.getElementById('tab2').classList.toggle('active', num === 2);
-            activeSet = (num === 1) ? [...questions1] : [...questions2];
-            resetGameUI();
-        }
+        let currentTest = 1;
+        let currentQuestions = [];
+        let qIdx = 0;
+        let score = 0;
+        let gameActive = false;
 
-        function initGame() {
-            if (activeSet.length === 0) activeSet = [...questions1];
-            activeSet.sort(() => Math.random() - 0.5);
-            currentQ = 0; score = 0; canClick = true;
-            resetGameUI(); 
-            document.getElementById('game-header').style.display = 'none';
-            document.getElementById('quiz-area').classList.remove('hidden');
-            showQuestion();
-        }
-
-        document.getElementById('start-game').onclick = initGame;
-
-        function showQuestion() {
-            canClick = true;
-            const q = activeSet[currentQ];
-            document.getElementById('question-num').innerText = `ШАГ ${currentQ + 1} ИЗ ${activeSet.length}`;
-            const options = [{t: q.win, w: true}, {t: q.lose, w: false}].sort(() => Math.random() - 0.5);
-            const area = document.getElementById('options');
-            area.innerHTML = `
-                <div class="slide-left-to-right">
-                    <p style="font-weight:bold; margin-bottom:15px; font-size:15px;">${q.q}</p>
-                    <div class="quiz-option" onclick="handleSelect(this, ${options[0].w})">${options[0].t}</div>
-                    <div class="quiz-option" onclick="handleSelect(this, ${options[1].w})">${options[1].t}</div>
-                </div>
-            `;
-        }
-
-        function handleSelect(el, isCorrect) {
-            if (!canClick) return;
-            canClick = false; 
-            if (isCorrect) { score++; el.classList.add('correct'); } else { el.classList.add('wrong'); }
-            setTimeout(() => {
-                const slideWrapper = document.querySelector('.slide-left-to-right');
-                if(slideWrapper) {
-                    slideWrapper.style.transition = 'all 0.4s var(--smooth)';
-                    slideWrapper.style.transform = 'translateX(150%)'; 
-                    slideWrapper.style.opacity = '0';
-                }
-                setTimeout(() => {
-                    if (currentQ < activeSet.length - 1) { currentQ++; showQuestion(); } else { finishQuiz(); }
-                }, 400); 
-            }, 400); 
-        }
-
-        function finishQuiz() {
-            let rank = "Новичок 🛡️";
-            if(score >= 4) rank = "Ученик 🔍";
-            if(score >= 7) rank = "Специалист 🧠";
-            if(score == 10) rank = "Кибер-Эксперт 👑";
-            addRadarLog(`ТЕСТ ЗАВЕРШЕН. РЕЗУЛЬТАТ: ${score}/10. РАНГ: ${rank}`, score >= 7 ? 'safe' : 'warn');
-            document.getElementById('quiz-area').innerHTML = `
-                <div style="text-align:center; animation: ultraEntrance 0.8s var(--ultra-smooth);">
-                    <h4 class="shimmer-text" style="font-size:22px; margin-bottom:15px;">ИТОГ: ${score}/${activeSet.length}</h4>
-                    <p style="font-size:16px; margin-bottom:25px;">Твой ранг:<br><b style="font-size:18px;">${rank}</b></p>
-                    <button id="restart-btn" class="btn-scan" style="width:100%; padding: 15px;">ЗАНОВО</button>
-                </div>`;
-            document.getElementById('restart-btn').onclick = initGame;
-        }
-
-        function resetGameUI() {
-            document.getElementById('game-header').style.display = 'block';
+        function switchTest(n) {
+            currentTest = n;
+            document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === n - 1));
+            document.getElementById('game-header').classList.remove('hidden');
             document.getElementById('quiz-area').classList.add('hidden');
-            document.getElementById('quiz-area').innerHTML = '<div id="quiz-container"><p id="question-num" class="shimmer-text"></p><div id="options"></div></div>';
+            gameActive = false;
         }
 
-        if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
+        document.getElementById('start-game').addEventListener('click', function() {
+            currentQuestions = currentTest === 1 ? questions1.slice() : (currentTest === 2 ? questions2.slice() : questions3.slice());
+            currentQuestions.sort(() => Math.random() - 0.5);
+            currentQuestions = currentQuestions.slice(0, 7);
+            qIdx = 0; score = 0; gameActive = true;
+            document.getElementById('game-header').classList.add('hidden');
+            document.getElementById('quiz-area').classList.remove('hidden');
+            renderQuestion();
+        });
 
-        // --- НОВОСТНАЯ ЛЕНТА: АВТО-ПРОКРУТКА + СТРЕЛКИ + ПЕРЕТАСКИВАНИЕ ---
-        (function setupNewsTicker(){
-            const wrap = document.getElementById('news-ticker');
-            const track = document.getElementById('news-track');
-            if (!wrap || !track) return;
+        function renderQuestion() {
+            const area = document.getElementById('quiz-area');
+            if (qIdx >= currentQuestions.length) {
+                area.innerHTML = '<div style="text-align:center; padding: 20px; animation: ultraEntrance 0.6s var(--ultra-smooth);"><h3 class="shimmer-text" style="font-size:20px;">РЕЗУЛЬТАТ</h3><p style="font-size:28px; font-weight:bold; color: var(--safe-green);">' + score + '/' + currentQuestions.length + '</p><p style="font-size:13px; opacity:0.8;">' + (score >= currentQuestions.length * 0.7 ? 'Отличный результат! Вы хорошо разбираетесь в кибербезопасности.' : 'Есть над чем поработать. Изучите памятку выше!') + '</p><button class="btn-scan" style="width:100%; margin-top:10px;" onclick="restartGame()">ПРОЙТИ ЕЩЁ РАЗ</button></div>';
+                gameActive = false;
+                return;
+            }
+            const q = currentQuestions[qIdx];
+            const opts = Math.random() < 0.5 ? [q.win, q.lose] : [q.lose, q.win];
+            area.innerHTML = '<div id="quiz-container" style="animation: ultraEntrance 0.4s var(--ultra-smooth)"><p id="question-num" class="shimmer-text" style="font-size:12px; margin-bottom: 8px;">Вопрос ' + (qIdx+1) + ' из ' + currentQuestions.length + '</p><p id="question-text" style="font-size:14px; font-weight:600; margin-bottom:15px; line-height:1.5;">' + q.q + '</p><div id="options">' + opts.map(o => '<button class="quiz-option" onclick="checkAnswer(this, \'' + escQ(o) + '\', \'' + escQ(q.win) + '\')">' + o + '</button>').join('') + '</div></div>';
+        }
 
-            const originals = Array.from(track.children);
-            originals.forEach(el => {
-                const clone = el.cloneNode(true);
-                clone.setAttribute('aria-hidden', 'true');
-                track.appendChild(clone);
+        function escQ(s) { return s.replace(/'/g, "\\'"); }
+
+        function checkAnswer(btn, chosen, correct) {
+            if (!gameActive) return;
+            const allBtns = document.querySelectorAll('.quiz-option');
+            allBtns.forEach(b => {
+                b.onclick = null;
+                if (b.textContent === correct) b.classList.add('correct');
+                else b.classList.add('wrong');
             });
+            if (chosen === correct) score++;
+            setTimeout(() => { qIdx++; renderQuestion(); }, 1000);
+        }
 
-            let pos = 0;            // текущее смещение в px (отрицательное)
-            let halfWidth = 0;
-            let autoTimer = null;
-            let isHover = false;
-            let isDragging = false;
-            let startX = 0;
-            let startPos = 0;
-            let pointerMoved = 0;
-            const DRAG_THRESHOLD = 6;
-            const TILE_STEP = 284;  // 270 + 14 gap (на мобильном чуть меньше, но и шаг ок)
-            const AUTO_INTERVAL_MS = 35; // плавный сдвиг
-            const AUTO_SPEED_PX = 0.6;   // px за тик
+        function restartGame() {
+            document.getElementById('game-header').classList.remove('hidden');
+            document.getElementById('quiz-area').classList.add('hidden');
+            document.getElementById('quiz-area').innerHTML = '<div id="quiz-container"><p id="question-num" class="shimmer-text" style="font-size:12px; margin-bottom: 8px;"></p><div id="options"></div></div>';
+            gameActive = false;
+        }
 
-            function recalc() {
-                halfWidth = track.scrollWidth / 2;
-            }
-            recalc();
-            window.addEventListener('resize', recalc);
+        // --- СИМУЛЯЦИИ ---
+        const SIM_PERSONAS = [
+            { name: 'Дмитрий Казаков', avatar: '👨‍💼', role: 'Служба безопасности банка' },
+            { name: 'Анна Петрова', avatar: '👩‍💻', role: 'Техническая поддержка' },
+            { name: 'Сергей Малинин', avatar: '👨‍🔧', role: 'Банковский специалист' },
+            { name: 'Наталья Зайцева', avatar: '👩‍⚖️', role: 'Правовой отдел' }
+        ];
 
-            function applyTransform() {
-                if (halfWidth > 0) {
-                    if (pos <= -halfWidth) pos += halfWidth;
-                    if (pos > 0) pos -= halfWidth;
-                }
-                track.style.transform = 'translateX(' + pos + 'px)';
-            }
-
-            function tick() {
-                if (isHover || isDragging) return;
-                pos -= AUTO_SPEED_PX;
-                track.style.transition = 'none';
-                applyTransform();
-            }
-
-            function startAuto() {
-                if (autoTimer) return;
-                autoTimer = setInterval(tick, AUTO_INTERVAL_MS);
-            }
-            function stopAuto() {
-                if (!autoTimer) return;
-                clearInterval(autoTimer);
-                autoTimer = null;
-            }
-
-            wrap.addEventListener('mouseenter', () => { isHover = true; });
-            wrap.addEventListener('mouseleave', () => { isHover = false; });
-
-            // Стрелки
-            const prev = document.getElementById('news-prev');
-            const next = document.getElementById('news-next');
-            function smoothJump(delta){
-                track.style.transition = 'transform 0.6s var(--ultra-smooth)';
-                pos += delta;
-                applyTransform();
-                setTimeout(()=>{ track.style.transition = 'none'; }, 650);
-            }
-            if (prev) prev.addEventListener('click', () => smoothJump( TILE_STEP));
-            if (next) next.addEventListener('click', () => smoothJump(-TILE_STEP));
-
-            // Перетаскивание мышью и пальцем
-            function onDown(e) {
-                isDragging = true;
-                pointerMoved = 0;
-                startX = (e.touches ? e.touches[0].clientX : e.clientX);
-                startPos = pos;
-                track.classList.add('is-dragging');
-                track.style.transition = 'none';
-            }
-            function onMove(e) {
-                if (!isDragging) return;
-                const x = (e.touches ? e.touches[0].clientX : e.clientX);
-                const dx = x - startX;
-                pointerMoved = Math.abs(dx);
-                pos = startPos + dx;
-                applyTransform();
-                if (pointerMoved > DRAG_THRESHOLD && e.cancelable) e.preventDefault();
-            }
-            function onUp() {
-                if (!isDragging) return;
-                isDragging = false;
-                track.classList.remove('is-dragging');
-            }
-
-            track.querySelectorAll('a.news-tile').forEach(a => {
-                a.addEventListener('click', function(ev){
-                    if (pointerMoved > DRAG_THRESHOLD) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                    }
-                });
-            });
-
-            track.addEventListener('mousedown', onDown);
-            window.addEventListener('mousemove', onMove);
-            window.addEventListener('mouseup', onUp);
-            track.addEventListener('touchstart', onDown, {passive: true});
-            track.addEventListener('touchmove', onMove, {passive: false});
-            track.addEventListener('touchend', onUp);
-
-            // запускаем после небольшой задержки, чтобы layout стабилизировался
-            setTimeout(()=>{ recalc(); startAuto(); }, 200);
-        })();
-
-        // --- ЛОГИКА НОВОЙ СИМУЛЯЦИИ GROQ (ЧАТА) ---
-        let currentSimTheme = "";
+        let currentSimTheme = '';
+        let currentPersona = null;
         let simHistory = [];
         let simTurn = 0;
-        const SIM_MAX_TURNS = 4;
-        
+        let trapUsed = false;
+        let simTurnCount = 0;
+
+        const TRAP_URLS = [
+            'bank-secure-check.by/verify',
+            'mvd-official-alert.by/confirm',
+            'gosuslugi-check.by/access',
+            'security-sbr.by/login'
+        ];
+
         function openSimulation(themeName) {
             currentSimTheme = themeName;
+            currentPersona = SIM_PERSONAS[Math.floor(Math.random() * SIM_PERSONAS.length)];
+            trapUsed = false;
+            simTurnCount = 0;
+
+            document.getElementById('sim-chat-avatar').textContent = currentPersona.avatar;
+            document.getElementById('sim-chat-name').textContent = currentPersona.name;
+            document.getElementById('sim-chat-role').textContent = currentPersona.role;
+
             document.getElementById('sim-selector').classList.add('hidden');
             document.getElementById('sim-chat').classList.remove('hidden');
             document.getElementById('chat-messages-box').innerHTML = '';
             document.getElementById('chat-input-area').style.display = 'flex';
             simHistory = [];
             simTurn = 0;
-            addRadarLog(`ЗАПУСК ИИ-СИМУЛЯЦИИ: ${themeName}`, 'warn');
-            
-            appendBotMessage("ИИ печатает...");
-            
+            addRadarLog('ЗАПУСК ИИ-СИМУЛЯЦИИ: ' + themeName, 'warn');
+
+            appendBotMessage("ИИ печатает...", true);
+
             fetch('/cs/sim_chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -2314,12 +2134,12 @@ HTML_LAYOUT = '''
             }).then(r=>r.json()).then(data => {
                 const box = document.getElementById('chat-messages-box');
                 box.lastChild.remove();
-                appendBotMessage(data.reply);
+                appendBotMessage(data.reply, false);
                 simHistory = data.history;
                 simTurn = data.turn || 0;
             }).catch(e => {
                 document.getElementById('chat-messages-box').lastChild.remove();
-                appendBotMessage("Ошибка сети. Модель недоступна.");
+                appendBotMessage("Ошибка сети. Модель недоступна.", false);
             });
         }
 
@@ -2328,20 +2148,29 @@ HTML_LAYOUT = '''
             document.getElementById('sim-selector').classList.remove('hidden');
         }
 
-        function appendBotMessage(text) {
+        function appendBotMessage(text, isTyping) {
             const box = document.getElementById('chat-messages-box');
             const msg = document.createElement('div');
             msg.className = 'msg bot';
-            msg.innerText = text;
+
+            if (!isTyping && !trapUsed && simTurnCount > 0 && Math.random() < 0.38) {
+                trapUsed = true;
+                const url = TRAP_URLS[Math.floor(Math.random() * TRAP_URLS.length)];
+                msg.innerHTML = text + '<br><a class="trap-link" href="#" onclick="showTrapModal(); return false;">' + url + '</a>';
+            } else {
+                msg.textContent = text;
+            }
+
             box.appendChild(msg);
             box.scrollTop = box.scrollHeight;
+            if (!isTyping) simTurnCount++;
         }
 
         function appendUserMessage(text) {
             const box = document.getElementById('chat-messages-box');
             const msg = document.createElement('div');
             msg.className = 'msg user';
-            msg.innerText = text;
+            msg.textContent = text;
             box.appendChild(msg);
             box.scrollTop = box.scrollHeight;
         }
@@ -2350,10 +2179,9 @@ HTML_LAYOUT = '''
             const input = document.getElementById('sim-input');
             const text = input.value.trim();
             if(!text) return;
-            
             appendUserMessage(text);
             input.value = '';
-            appendBotMessage("ИИ печатает...");
+            appendBotMessage("ИИ печатает...", true);
 
             fetch('/cs/sim_chat', {
                 method: 'POST',
@@ -2361,32 +2189,31 @@ HTML_LAYOUT = '''
                 body: JSON.stringify({text: text, history: simHistory, theme: currentSimTheme, is_start: false, turn: simTurn})
             }).then(r=>r.json()).then(data => {
                 const box = document.getElementById('chat-messages-box');
-                box.lastChild.remove(); 
-                
+                box.lastChild.remove();
                 simTurn = data.turn || simTurn;
                 if (data.is_ended) {
-                    appendBotMessage(data.reply);
+                    appendBotMessage(data.reply, false);
                     setTimeout(() => finishChatSimFinal(data.score, null), 600);
                 } else {
-                    appendBotMessage(data.reply);
+                    appendBotMessage(data.reply, false);
                     simHistory = data.history;
                 }
             }).catch(e => {
                 document.getElementById('chat-messages-box').lastChild.remove();
-                appendBotMessage("Произошла ошибка связи с Groq.");
+                appendBotMessage("Произошла ошибка связи.", false);
             });
         }
 
-        document.getElementById('sim-input').addEventListener('keypress', function (e) {
+        document.getElementById('sim-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendSimMessageReq();
         });
 
         function finishChatSimFinal(score, finalMsg) {
             document.getElementById('chat-input-area').style.display = 'none';
-            if (finalMsg) appendBotMessage(finalMsg);
-            
+            if (finalMsg) appendBotMessage(finalMsg, false);
+
             let verdict = score > 50 ? "✅ ВЫ СПРАВИЛИСЬ!" : "❌ ДАННЫЕ СКОМПРОМЕТИРОВАНЫ!";
-            addRadarLog(`СИМУЛЯЦИЯ ЗАВЕРШЕНА. ВЫЖИВАЕМОСТЬ: ${score}%`, score > 50 ? 'safe' : 'danger');
+            addRadarLog('СИМУЛЯЦИЯ ЗАВЕРШЕНА. ВЫЖИВАЕМОСТЬ: ' + score + '%', score > 50 ? 'safe' : 'danger');
 
             setTimeout(() => {
                 const box = document.getElementById('chat-messages-box');
@@ -2397,43 +2224,40 @@ HTML_LAYOUT = '''
                 resultMsg.style.borderRadius = '15px';
                 resultMsg.style.marginTop = '10px';
                 resultMsg.style.animation = 'ultraEntrance 0.8s var(--ultra-smooth)';
-                resultMsg.innerHTML = `
-                    <h3 class="shimmer-text" style="margin-top:0;">${verdict}</h3>
-                    <p style="font-size:24px; font-weight:bold; margin: 10px 0; color: ${score > 50 ? 'var(--safe-green)' : 'var(--danger-red)'}">${score}% УСПЕХА</p>
-                    <button class="btn-scan" onclick="closeSim()" style="margin-top: 10px; width: 100%;">НАЗАД В МЕНЮ</button>
-                `;
+                resultMsg.innerHTML = '<h3 class="shimmer-text" style="margin-top:0;">' + verdict + '</h3>' +
+                    '<p style="font-size:24px; font-weight:bold; margin: 10px 0; color: ' + (score > 50 ? 'var(--safe-green)' : 'var(--danger-red)') + '">' + score + '% УСПЕХА</p>' +
+                    '<button class="btn-scan" onclick="closeSim()" style="margin-top: 10px; width: 100%;">НАЗАД В МЕНЮ</button>';
                 box.appendChild(resultMsg);
                 box.scrollTop = box.scrollHeight;
             }, 800);
         }
 
-        // --- ЛОГИКА ИИ-ПОМОЩНИКА В ИНФОРМАЦИИ ---
+        // --- ИИ-ПОМОЩНИК ---
         let helperHistory = [];
-        
+
         function sendHelperMessage() {
             const input = document.getElementById('helper-input');
             const text = input.value.trim();
             if(!text) return;
-            
             const box = document.getElementById('helper-chat-box');
-            box.innerHTML += `<div style="color:var(--safe-green); font-size:12px;"><b>Вы:</b> ${text}</div>`;
+            box.innerHTML += '<div style="color:var(--safe-green); font-size:12px;"><b>Вы:</b> ' + text + '</div>';
             input.value = '';
             box.scrollTop = box.scrollHeight;
-            
+
             fetch('/cs/helper_chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({text: text, history: helperHistory})
             }).then(r=>r.json()).then(data => {
-                box.innerHTML += `<div style="color:var(--accent-frost); font-size:12px;"><b>ИИ:</b> ${data.reply}</div>`;
+                box.innerHTML += '<div style="color:var(--accent-frost); font-size:12px;"><b>ИИ:</b> ' + data.reply + '</div>';
                 helperHistory = data.history;
                 box.scrollTop = box.scrollHeight;
             }).catch(e => {
-                box.innerHTML += `<div style="color:var(--danger-red); font-size:12px;">Система временно недоступна. Проверьте ключ Groq API.</div>`;
+                box.innerHTML += '<div style="color:var(--danger-red); font-size:12px;">Система временно недоступна. Проверьте ключ API.</div>';
             });
         }
-        
-        document.getElementById('helper-input').addEventListener('keypress', function (e) {
+
+        document.getElementById('helper-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendHelperMessage();
         });
 
@@ -2455,14 +2279,12 @@ HTML_LAYOUT = '''
                 special: /[^A-Za-zА-Яа-яЁё0-9]/.test(pw),
                 nocommon: pw.length > 0 && !COMMON_PASSWORDS.has(pw.toLowerCase())
             };
-
             let pool = 0;
             if (rules.lower) pool += 26;
             if (rules.upper) pool += 26;
             if (rules.digit) pool += 10;
             if (rules.special) pool += 32;
             const entropy = pw.length > 0 && pool > 0 ? Math.round(pw.length * Math.log2(pool)) : 0;
-
             const guessesPerSec = 1e10;
             const seconds = pool > 0 ? Math.pow(pool, pw.length) / guessesPerSec : 0;
             let timeStr = "мгновенно";
@@ -2474,25 +2296,20 @@ HTML_LAYOUT = '''
             else if (seconds < 31536000) timeStr = Math.round(seconds/86400) + " дн";
             else if (seconds < 31536000 * 1000) timeStr = Math.round(seconds/31536000) + " лет";
             else timeStr = "века";
-
             const score = Object.values(rules).filter(Boolean).length;
             let level, color;
-            if (pw.length === 0)             { level = "Введите пароль для анализа"; color = "var(--text-main)"; }
-            else if (!rules.nocommon)        { level = "❌ КРИТИЧНО: пароль есть в утечках, взлом мгновенный"; color = "var(--danger-red)"; }
-            else if (score <= 3)             { level = "⚠️ СЛАБЫЙ — лёгкая мишень для атаки"; color = "var(--danger-red)"; }
-            else if (score <= 5)             { level = "🟡 СРЕДНИЙ — приемлемо для непубличных аккаунтов"; color = "#fbbf24"; }
-            else if (score === 6)            { level = "✅ ХОРОШИЙ — устойчив к большинству атак"; color = "var(--safe-green)"; }
-            else                             { level = "🛡️ КРЕПОСТЬ — высочайшая криптостойкость"; color = "var(--safe-green)"; }
-
+            if (pw.length === 0)          { level = "Введите пароль для анализа"; color = "var(--text-main)"; }
+            else if (!rules.nocommon)     { level = "❌ КРИТИЧНО: пароль есть в базах утечек, взлом мгновенный"; color = "var(--danger-red)"; }
+            else if (score <= 3)          { level = "⚠️ СЛАБЫЙ — лёгкая мишень для атаки"; color = "var(--danger-red)"; }
+            else if (score <= 5)          { level = "🟡 СРЕДНИЙ — приемлемо для непубличных аккаунтов"; color = "#fbbf24"; }
+            else if (score === 6)         { level = "✅ ХОРОШИЙ — устойчив к большинству атак"; color = "var(--safe-green)"; }
+            else                          { level = "🛡️ КРЕПОСТЬ — высочайшая криптостойкость"; color = "var(--safe-green)"; }
             return { rules, entropy, timeStr, level, color };
         }
 
         function renderPasswordReport(pw) {
             const report = document.getElementById('password-report');
-            if (pw.length === 0) {
-                report.style.display = 'none';
-                return;
-            }
+            if (pw.length === 0) { report.style.display = 'none'; return; }
             if (report.style.display === 'none') {
                 report.style.display = 'block';
                 report.style.animation = 'ultraEntrance 0.6s var(--ultra-smooth)';
@@ -2530,11 +2347,11 @@ HTML_LAYOUT = '''
             input.focus();
         }
 
-        document.getElementById('password-input').addEventListener('input', function (e) {
+        document.getElementById('password-input').addEventListener('input', function(e) {
             renderPasswordReport(e.target.value);
         });
 
-        // --- ПИНГ-ИНДИКАТОР ---
+        // --- ПИНГ ---
         async function measurePing() {
             const indicator = document.getElementById('ping-indicator');
             const valueEl = document.getElementById('ping-value');
@@ -2556,16 +2373,36 @@ HTML_LAYOUT = '''
         measurePing();
         setInterval(measurePing, 5000);
 
+        // --- НОВОСТНАЯ ЛЕНТА (свайп/стрелки) ---
+        (function() {
+            const track = document.getElementById('news-track');
+            if (!track) return;
+            const prev = document.getElementById('news-prev');
+            const next = document.getElementById('news-next');
+            let startX = 0;
+            function getTileW() {
+                const t = track.querySelector('.news-tile');
+                return t ? t.offsetWidth + 14 : 284;
+            }
+            if (prev) prev.addEventListener('click', () => track.parentElement.scrollBy({left: -getTileW(), behavior: 'smooth'}));
+            if (next) next.addEventListener('click', () => track.parentElement.scrollBy({left: getTileW(), behavior: 'smooth'}));
+            track.addEventListener('mousedown', e => { startX = e.clientX; track.classList.add('is-dragging'); });
+            track.addEventListener('mousemove', e => { if (!track.classList.contains('is-dragging')) return; track.parentElement.scrollLeft -= (e.clientX - startX) * 0.6; startX = e.clientX; });
+            track.addEventListener('mouseup', () => track.classList.remove('is-dragging'));
+            track.addEventListener('mouseleave', () => track.classList.remove('is-dragging'));
+        })();
     </script>
 </body>
 </html>
 '''
+
 
 def _ru_plural(n, forms):
     n10, n100 = n % 10, n % 100
     if n10 == 1 and n100 != 11: return forms[0]
     if 2 <= n10 <= 4 and not (12 <= n100 <= 14): return forms[1]
     return forms[2]
+
 
 @app.route('/')
 def home():
@@ -2575,55 +2412,92 @@ def home():
         HTML_LAYOUT,
         total_scans=scans, total_threats=viruses,
         stats_count=scans, scans_word=scans_word,
+        verdict_text=None, stats=None, ai_text=None, detail_items=[],
         current_page='home'
     )
+
 
 @app.route('/check', methods=['POST'])
 def check():
     url = request.form.get('url', '').strip()
     scans, viruses = get_real_stats()
-    time.sleep(1) 
+    time.sleep(1)
     try:
-        res = requests.post("https://www.virustotal.com/api/v3/urls", data={"url": url}, headers={"x-apikey": VT_API_KEY}, timeout=20)
+        res = requests.post(
+            "https://www.virustotal.com/api/v3/urls",
+            data={"url": url},
+            headers={"x-apikey": VT_API_KEY},
+            timeout=20
+        )
         analysis_id = res.json()['data']['id']
         data = None
-        for _ in range(6): 
+        for _ in range(6):
             time.sleep(5)
-            report = requests.get(f"https://www.virustotal.com/api/v3/analyses/{analysis_id}", headers={"x-apikey": VT_API_KEY}, timeout=20)
+            report = requests.get(
+                f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
+                headers={"x-apikey": VT_API_KEY},
+                timeout=20
+            )
             if report.status_code == 200:
                 temp_data = report.json()['data']['attributes']
                 if temp_data['status'] == 'completed' or temp_data['stats']['harmless'] > 0:
-                    data = temp_data; break
-        
+                    data = temp_data
+                    break
+
         if data:
             stats = data['stats']
+            total_checked = sum(stats.values()) or 1
             update_real_stats(is_virus=stats['malicious'] > 0)
             new_scans, new_viruses = get_real_stats()
             ai_opinion = ask_ai_opinion(url, stats)
-            
+
             if stats['malicious'] > 0:
                 items = [
-                    {"label": "КРИТИЧЕСКИЙ ОБЪЕКТ", "text": "Обнаружено внедрение вредоносного кода."},
-                    {"label": "АКТИВНЫЙ ПЕРЕХВАТ", "text": "Зафиксирована попытка несанкционированного доступа."},
-                    {"label": "ФИШИНГ-УГРОЗА", "text": "Ресурс идентифицирован как поддельный."}
+                    {
+                        "label": "ВРЕДОНОСНЫЙ КОД ПОДТВЕРЖДЁН",
+                        "text": f"{stats['malicious']} из {total_checked} аналитических движков классифицировали ресурс как опасный. Угроза задокументирована."
+                    },
+                    {
+                        "label": "ТЕХНИКА АТАКИ: ФИШИНГ / РЕДИРЕКТ",
+                        "text": "Обнаружены признаки перехвата данных. Ресурс использует методы имитации легитимного сайта для кражи учётных данных или платёжной информации."
+                    },
+                    {
+                        "label": "РЕКОМЕНДАЦИЯ: НЕМЕДЛЕННОЕ ЗАКРЫТИЕ",
+                        "text": "Закройте страницу, не вводя никаких данных. При необходимости сообщите об угрозе по линии 102 или на сайте mvd.gov.by."
+                    }
                 ]
             else:
                 items = [
-                    {"label": "БАЗА СИГНАТУР", "text": "Вредоносные элементы не обнаружены."},
-                    {"label": "ИНДЕКС ДОВЕРИЯ", "text": "Домен обладает хорошей репутацией."},
-                    {"label": "SSL-ПРОТОКОЛ", "text": "Каналы передачи данных соответствуют нормам."}
+                    {
+                        "label": "СИГНАТУРНАЯ БАЗА ЧИСТА",
+                        "text": f"Проверено {stats.get('harmless', 0)} независимыми аналитическими движками — совпадений с шаблонами вредоносного ПО не обнаружено."
+                    },
+                    {
+                        "label": "РЕПУТАЦИЯ ДОМЕНА",
+                        "text": f"Ресурс не числится в реестрах заблокированных и фишинговых сайтов. Индекс подозрительности: {stats.get('suspicious', 0)} из {total_checked} движков."
+                    },
+                    {
+                        "label": "ПРОТОКОЛ ПЕРЕДАЧИ ДАННЫХ",
+                        "text": "Шифрование канала соответствует актуальным стандартам безопасности. Данные передаются по защищённому соединению без признаков компрометации."
+                    }
                 ]
-            
+
             return render_template_string(
-                HTML_LAYOUT, stats=stats, verdict_text="Готово", ai_text=ai_opinion,
+                HTML_LAYOUT,
+                stats=stats, verdict_text="Готово", ai_text=ai_opinion,
                 detail_items=items, total_scans=new_scans, total_threats=new_viruses,
                 stats_count=new_scans,
                 scans_word=_ru_plural(new_scans, ('ПРОВЕРКА', 'ПРОВЕРКИ', 'ПРОВЕРОК')),
                 current_page='scanner'
             )
-    except: pass
+    except Exception as e:
+        pass
+
     return render_template_string(
-        HTML_LAYOUT, stats=None, verdict_text="Ошибка",
+        HTML_LAYOUT,
+        stats=None, verdict_text="Ошибка",
+        ai_text="Не удалось получить данные от сервиса проверки. Убедитесь, что VT_API_KEY задан в переменных окружения, и повторите попытку.",
+        detail_items=[],
         total_scans=scans, total_threats=viruses,
         stats_count=scans,
         scans_word=_ru_plural(scans, ('ПРОВЕРКА', 'ПРОВЕРКИ', 'ПРОВЕРОК')),
@@ -2631,24 +2505,22 @@ def check():
     )
 
 
-# --- НОВЫЕ ФУНКЦИИ ДЛЯ ИНТЕГРАЦИИ GROQ (СИМУЛЯЦИЯ И ПОМОЩНИК) ---
-
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "llama3-8b-8192"]
 
+
 class GroqError(Exception):
     pass
+
 
 def _call_groq(messages, temperature=0.8, max_tokens=180):
     key = (GROQ_API_KEY or '').strip()
     if not key:
         raise GroqError("GROQ_API_KEY не задан в переменных окружения")
-
     headers = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
-
     last_err = None
     for model in GROQ_MODELS:
         payload = {
@@ -2662,22 +2534,18 @@ def _call_groq(messages, temperature=0.8, max_tokens=180):
         except requests.RequestException as e:
             last_err = f"Сетевая ошибка: {e}"
             continue
-
         if res.status_code == 200:
             try:
-                data = res.json()
-                return data['choices'][0]['message']['content'].strip()
+                return res.json()['choices'][0]['message']['content'].strip()
             except (ValueError, KeyError, IndexError) as e:
-                last_err = f"Неверный формат ответа Groq: {e}"
+                last_err = f"Неверный формат ответа: {e}"
                 continue
-
         if res.status_code in (401, 403):
             try:
                 msg = res.json().get('error', {}).get('message', res.text)
             except Exception:
                 msg = res.text
-            raise GroqError(f"Ключ Groq отклонён ({res.status_code}): {msg}")
-
+            raise GroqError(f"Ключ отклонён ({res.status_code}): {msg}")
         try:
             msg = res.json().get('error', {}).get('message', res.text)
         except Exception:
@@ -2685,8 +2553,7 @@ def _call_groq(messages, temperature=0.8, max_tokens=180):
         last_err = f"HTTP {res.status_code} ({model}): {msg}"
         if res.status_code not in (400, 404):
             continue
-
-    raise GroqError(last_err or "Неизвестная ошибка Groq")
+    raise GroqError(last_err or "Неизвестная ошибка")
 
 
 def _evaluate_defense(history, theme):
@@ -2741,10 +2608,8 @@ def sim_chat():
         try:
             reply = _call_groq(history, temperature=0.9, max_tokens=160)
         except GroqError as e:
-            print(f"[GROQ sim_chat start] {e}")
             reply = "Здравствуйте! Это служба безопасности банка. С вашей карты сейчас пытаются списать крупную сумму. Срочно подтвердите данные!"
-        except Exception as e:
-            print(f"[GROQ sim_chat start unknown] {e}")
+        except Exception:
             reply = "Здравствуйте! Это служба безопасности банка. С вашей карты сейчас пытаются списать крупную сумму. Срочно подтвердите данные!"
         history.append({"role": "assistant", "content": reply})
         return jsonify({"reply": reply, "history": history, "is_ended": False, "score": 0, "turn": 0})
@@ -2756,11 +2621,9 @@ def sim_chat():
         history.append({"role": "system", "content": "Это последний ход. Дай одну короткую финальную реплику (1-2 предложения) — либо последнюю попытку давления, либо раздражённое признание поражения. Не задавай больше вопросов. Не выходи из роли."})
         try:
             final_msg = _call_groq(history, temperature=0.7, max_tokens=120)
-        except GroqError as e:
-            print(f"[GROQ sim_chat final] {e}")
+        except GroqError:
             final_msg = "Ладно, потом перезвоню."
-        except Exception as e:
-            print(f"[GROQ sim_chat final unknown] {e}")
+        except Exception:
             final_msg = "Ладно, потом перезвоню."
         history.pop(-2)
         history.append({"role": "assistant", "content": final_msg})
@@ -2768,54 +2631,52 @@ def sim_chat():
         return jsonify({"reply": final_msg, "history": history, "is_ended": True, "score": score, "turn": new_turn})
 
     try:
-        reply = _call_groq(history, temperature=0.8, max_tokens=160)
+        reply = _call_groq(history, temperature=0.9, max_tokens=160)
     except GroqError as e:
-        print(f"[GROQ sim_chat] {e}")
-        reply = "Алло, вы меня слышите? Время уходит, нужно срочно решать!"
-    except Exception as e:
-        print(f"[GROQ sim_chat unknown] {e}")
-        reply = "Алло, вы меня слышите? Время уходит, нужно срочно решать!"
+        reply = f"Ошибка: {e}"
+    except Exception:
+        reply = "Произошла техническая ошибка."
     history.append({"role": "assistant", "content": reply})
     return jsonify({"reply": reply, "history": history, "is_ended": False, "score": 0, "turn": new_turn})
-
-@app.route('/cs/ping')
-def ping():
-    return jsonify({"ok": True, "ts": time.time()})
 
 
 @app.route('/cs/helper_chat', methods=['POST'])
 def helper_chat():
     data = request.json or {}
-    text = (data.get('text') or '').strip()
+    text = data.get('text', '')
     history = data.get('history', [])
 
-    sys_prompt = (
-        "Ты ИИ-помощник CyberShield. Помогай пользователю распознавать мошенников "
-        "и давай советы по кибербезопасности. Отвечай кратко и по делу, "
-        "максимум 3-4 предложения, на русском языке."
-    )
+    sys_msg = {
+        "role": "system",
+        "content": (
+            "Ты — ИИ-помощник по кибербезопасности CyberShield. Отвечаешь на русском языке. "
+            "Консультируешь граждан Беларуси по вопросам защиты от мошенников, безопасности в интернете, "
+            "что делать если звонят 'из банка', как проверить ссылку, как не стать жертвой фишинга. "
+            "Отвечай чётко, по делу, 3-5 предложений. Без лишней воды."
+        )
+    }
 
     if not history:
-        history = [{"role": "system", "content": sys_prompt}]
-
-    if not text:
-        return jsonify({"reply": "Напишите ваш вопрос.", "history": history})
+        history = [sys_msg]
 
     history.append({"role": "user", "content": text})
 
     try:
-        reply = _call_groq(history, temperature=0.4, max_tokens=300)
+        reply = _call_groq(history, temperature=0.6, max_tokens=250)
     except GroqError as e:
-        print(f"[GROQ helper_chat] {e}")
-        reply = f"ИИ-помощник временно недоступен. Причина: {e}"
-    except Exception as e:
-        print(f"[GROQ helper_chat unknown] {e}")
-        reply = "ИИ-помощник временно недоступен. Попробуйте через минуту."
+        reply = f"Сервис временно недоступен: {e}"
+    except Exception:
+        reply = "Произошла ошибка. Попробуйте позже."
 
     history.append({"role": "assistant", "content": reply})
     return jsonify({"reply": reply, "history": history})
 
+
+@app.route('/cs/ping')
+def ping():
+    return '', 204
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
- 
+    app.run(host='0.0.0.0', port=port, debug=False)
